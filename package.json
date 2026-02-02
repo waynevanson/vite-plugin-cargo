@@ -1,10 +1,13 @@
 {
 	"name": "@waynevanson/vite-plugin-cargo",
 	"version": "1.0.0",
-	"description": "",
+	"description": "Import wasm_bingen compatible Rust to JavaScript via Vite",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"type": "module",
+	"repository": {
+		"url": "https://github.com/waynevanson/vite-plugin-cargo"
+	},
 	"files": [
 		"dist"
 	],
