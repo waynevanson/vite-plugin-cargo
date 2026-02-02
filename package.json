@@ -8,6 +8,10 @@
 	"repository": {
 		"url": "https://github.com/waynevanson/vite-plugin-cargo"
 	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
 	"files": [
 		"dist"
 	],
