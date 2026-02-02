@@ -21,7 +21,7 @@ You must have the following installed on your system:
 ## Installation
 
 ```bash
-npm install vite-plugin-cargo --save-dev
+npm install @waynevanson/vite-plugin-cargo --save-dev
 
 ```
 
