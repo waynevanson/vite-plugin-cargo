@@ -4,6 +4,7 @@ import path from "node:path";
 import picomatch from "picomatch";
 import * as v from "valibot";
 import type { Plugin } from "vite";
+import { globSync } from "node:fs";
 
 type MetadaSchemaOptions = { project: string; id: string };
 
@@ -111,6 +112,8 @@ function compileLibrary(options: MetadaSchemaOptions, isServe: boolean) {
 	return filename;
 }
 
+const CACHE_DIR = "node_modules/.cache/vitest-plugin-cargo";
+
 export type VitePluginCargoOptions = {
 	includes: picomatch.Glob;
 	browserOnly?: boolean;
@@ -124,6 +127,8 @@ export type VitePluginCargoOptions = {
 // Dependencies:
 // 1. `cargo`
 // 2. `wasm_bindgen`
+// todo: ensure that all rust files required match.
+// the transform?
 export function cargo(pluginOptions: VitePluginCargoOptions): Plugin<never> {
 	const matches = picomatch(pluginOptions.includes, { contains: true });
 	const typescript = !(pluginOptions?.noTypescript ?? false);
@@ -141,6 +146,10 @@ export function cargo(pluginOptions: VitePluginCargoOptions): Plugin<never> {
 			isServe = config.command === "serve";
 		},
 
+		async buildStart() {},
+
+		// import lib only,  watch non-libs?
+
 		async resolveId(source, importer) {
 			// check if this import came from one of our entrypoints
 			const entry = libraries
@@ -154,11 +163,19 @@ export function cargo(pluginOptions: VitePluginCargoOptions): Plugin<never> {
 			// ensure source is relative to wasm_bindgen output dir
 			return path.resolve(entry.outDir, source);
 		},
-
+		shouldTransformCachedModule(options) {
+			console.log(options);
+		},
 		async transform(_code, id) {
 			if (!matches(id)) {
 				return null;
 			}
+
+			const ids = globSync(pluginOptions.includes).map((filename) =>
+				path.resolve(filename),
+			);
+
+			await Promise.all(ids.map((id) => this.addWatchFile(id)));
 
 			const project = getClosestCargoProject(id);
 			const options = { id, project };
@@ -172,6 +189,8 @@ export function cargo(pluginOptions: VitePluginCargoOptions): Plugin<never> {
 			);
 
 			libraries.set(hash, { id, outDir, project });
+
+			// todo: add dependency graph of cargo to list of watched files.
 
 			const wasm = compileLibrary(options, isServe);
 
@@ -197,17 +216,6 @@ export function cargo(pluginOptions: VitePluginCargoOptions): Plugin<never> {
 			// `.d.ts` from `wasm_bindgen` aren't read I believe, so we emit them ourselves.
 			// todo: only emit the files we load. Currently we assume they're all loaded.
 			if (typescript) {
-				// add `.d.ts` to files
-				const filenames = await this.fs.readdir(outDir);
-				await Promise.all(
-					filenames
-						.filter((filename) => filename.endsWith(".d.ts"))
-						.map(
-							async (filename) =>
-								await this.load({ id: path.resolve(outDir, filename) }),
-						),
-				);
-
 				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions
 				const source = path.join(outDir, `${metadata.name}.d.ts`);
 				const target = `${id}.d.ts`;
