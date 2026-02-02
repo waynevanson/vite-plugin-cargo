@@ -60,7 +60,8 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			},
 			async handler(_code, id) {
 				// todo: throw when importing a non-entry point.
-				// or way in the future do this thing.
+				// todo: way in the future we could enable users to import any rust file
+				// and we'll add overrides instead of relying on Cargo.toml for `lib` information.
 				if (!matches(id)) {
 					return null;
 				}
@@ -75,12 +76,13 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 				// todo: filter watchable files by dependencies
 				// after building rust, check the `deps/<crate-identifier>.d` for makefile dependency graph.
-				await addWatchFiles(
-					pluginOptions.includes,
-					this.addWatchFile.bind(this),
-				);
+				for (const basename of globSync(pluginOptions.includes)) {
+					this.addWatchFile(path.resolve(basename));
+				}
 
 				const hash = createProjectHash(options);
+				// keep track of libraries compiled
+				// for resolving `wasm-bingen` files to `outDir`.
 				libraries.set(hash, id);
 
 				const outDir = path.resolve(CACHE_DIR, hash);
@@ -93,14 +95,14 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					wasm,
 				});
 
+				// read `.js` entry point for code resolution
 				const entrypoint = path.resolve(outDir, `${metadata.name}.js`);
 				const content = await this.fs.readFile(entrypoint, {
 					encoding: "utf8",
 				});
 
-				// todo: only emit the files we load. Currently we assume they're all loaded.
+				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.
 				if (typescript) {
-					// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.
 					const source = path.join(outDir, `${metadata.name}.d.ts`);
 					const target = `${id}.d.ts`;
 					await this.fs.copyFile(source, target);
@@ -112,17 +114,6 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			},
 		},
 	};
-}
-
-export async function addWatchFiles(
-	includes: picomatch.Glob,
-	addWatchFile: (id: string) => void,
-) {
-	globSync(includes)
-		.map((filename) => path.resolve(filename))
-		.forEach((id) => {
-			addWatchFile(id);
-		});
 }
 
 export function getClosestCargoProject(id: string) {
