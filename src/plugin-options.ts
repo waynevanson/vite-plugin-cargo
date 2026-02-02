@@ -5,34 +5,33 @@ const enable = v.optional(v.boolean(), false);
 
 const FeaturesSchema = v.pipe(
 	v.union([
-		v.pipe(
-			v.object({
-				allFeatures: v.literal(true),
-			}),
-			v.transform(() => ({ type: "all-features" as const })),
-		),
+		v.object({ allFeatures: v.literal(true) }),
 		v.pipe(
 			v.object({
 				features: v.optional(v.array(v.string())),
 				noDefaultFeatures: enable,
 			}),
-			v.transform((features) => ({
-				type: "maybe-features" as const,
-				...features,
-			})),
+			v.transform((possibleFeatures) => ({ possibleFeatures })),
 		),
 	]),
 	v.transform((features) => ({ features })),
 );
 
-const VitePluginCargoOptionsBaseSchema = v.object({
-	includes: v.union([
-		v.string(),
-		v.array(v.string()),
-	]) as v.GenericSchema<picomatch.Glob>,
-	noTypescript: enable,
-	browserOnly: enable,
-});
+const VitePluginCargoOptionsBaseSchema = v.pipe(
+	v.object({
+		includes: v.union(
+			[v.string(), v.array(v.string())],
+			"Glob",
+		) as v.GenericSchema<picomatch.Glob>,
+		noTypescript: enable,
+		browserOnly: enable,
+	}),
+	v.transform((base) => ({
+		typescript: !base.noTypescript,
+		browserless: !base.browserOnly,
+		includes: base.includes,
+	})),
+);
 
 const VitePluginCargoOptionsSchema = v.intersect([
 	VitePluginCargoOptionsBaseSchema,
@@ -42,5 +41,9 @@ const VitePluginCargoOptionsSchema = v.intersect([
 export const parsePluginOptions = v.parser(VitePluginCargoOptionsSchema);
 
 export type VitePluginCargoOptions = v.InferInput<
+	typeof VitePluginCargoOptionsSchema
+>;
+
+export type VitePluginCargoOptionsInternal = v.InferOutput<
 	typeof VitePluginCargoOptionsSchema
 >;
