@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import * as crypto from "node:crypto";
 import { globSync } from "node:fs";
 import path from "node:path";
 import picomatch from "picomatch";
@@ -22,9 +22,15 @@ const CACHE_DIR = "node_modules/.cache/vitest-plugin-cargo";
 // the transform?
 
 function createProjectHash(options: MetadaSchemaOptions) {
-	return createHash("sha256")
+	return crypto
+		.createHash("sha256")
 		.update(`${options.project}:${options.id}`)
 		.digest("hex");
+}
+
+interface Library {
+	id: string;
+	outDir: string;
 }
 
 export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
@@ -34,7 +40,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 	let isServe = false;
 
-	const libraries = new Map<string, string>();
+	const libraries = new Map<string, Library>();
 
 	return {
 		name: "vite-plugin-cargo",
@@ -43,16 +49,16 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 		},
 		async resolveId(source, importer) {
 			// check if this import came from one of our entrypoints
-			const hash = libraries
-				.entries()
-				.find(([_, library]) => library === importer)?.[0];
+			const outDir = libraries
+				.values()
+				.find((library) => library.id === importer)?.outDir;
 
-			if (hash === undefined) {
+			if (outDir === undefined) {
 				return null;
 			}
 
 			// ensure source is relative to wasm_bindgen output dir
-			return path.resolve(CACHE_DIR, hash, source);
+			return path.resolve(outDir, source);
 		},
 		transform: {
 			filter: {
@@ -81,11 +87,12 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				}
 
 				const hash = createProjectHash(options);
-				// keep track of libraries compiled
-				// for resolving `wasm-bingen` files to `outDir`.
-				libraries.set(hash, id);
 
 				const outDir = path.resolve(CACHE_DIR, hash);
+
+				// keep track of libraries compiled
+				// for resolving `wasm-bingen` files to `outDir`.
+				libraries.set(hash, { id, outDir });
 
 				buildWasmBindgen({
 					browserOnly: pluginOptions.browserOnly,

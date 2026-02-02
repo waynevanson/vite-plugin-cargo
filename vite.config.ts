@@ -1,6 +1,6 @@
 import { builtinModules } from "node:module";
 import dts from "unplugin-dts/vite";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 const builtInNodeModules = [
 	...builtinModules,
@@ -21,4 +21,5 @@ export default defineConfig({
 		sourcemap: true,
 	},
 	plugins: [dts({ bundleTypes: true })],
+	test: {},
 });
