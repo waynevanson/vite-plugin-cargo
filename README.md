@@ -98,24 +98,23 @@ console.log(greet("Vite"));
 
 Additionally, one of the following configurations can be used with the base.
 
-| Option        | Type       | Description                                  |
-| :------------ | :--------- | :------------------------------------------- |
-| `features`    | `string[]` | (Optional) List of Cargo features to enable. |
-| `allFeatures` | `boolean`  | (Optional) Enable all Cargo features.        |
+| Option              | Type       | Description                                  |
+| :------------------ | :--------- | :------------------------------------------- |
+| `features`          | `string[]` | (Optional) List of Cargo features to enable. |
+| `noDefaultFeatures` | `boolean`  | (Optional) Disable default Cargo features.   |
 
-| Option        | Type       | Description                                  |
-| :------------ | :--------- | :------------------------------------------- |
-| `features`    | `string[]` | (Optional) List of Cargo features to enable. |
-| `allFeatures` | `boolean`  | (Optional) Enable all Cargo features.        |
+| Option        | Type      | Description                           |
+| :------------ | :-------- | :------------------------------------ |
+| `allFeatures` | `boolean` | (Optional) Enable all Cargo features. |
 
 ---
 
 ## How it works
 
-Simply put
+Transformation pipeline:
 
-```
-`.rs` -> `.wasm` -> `.wasm` + `.js` + `.d.ts`
+```js
+`.rs` -> `.wasm` + `.js` + `.d.ts`
 ```
 
 1. **Detection**: The plugin matches files via the `includes` glob.
