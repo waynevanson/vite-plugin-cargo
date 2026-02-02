@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import picomatch from "picomatch";
 import * as v from "valibot";
-import type { Plugin } from "vitest/config";
+import type { Plugin } from "vite";
 
 type MetadaSchemaOptions = { project: string; id: string };
 

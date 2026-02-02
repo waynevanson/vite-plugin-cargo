@@ -1,0 +1,41 @@
+{
+	"name": "@waynevanson/vite-plugin-cargo",
+	"version": "1.0.0",
+	"description": "",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"type": "module",
+	"files": [
+		"dist"
+	],
+	"keywords": [
+		"vite-plugin"
+	],
+	"scripts": {
+		"build": "tsc",
+		"prepublishOnly": "tsc"
+	},
+	"author": "Wayne Van Son",
+	"license": "MIT",
+	"packageManager": "pnpm@10.27.0",
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.13",
+		"@types/node": "^24.10.9",
+		"@types/picomatch": "^4.0.2",
+		"typescript": "^5.9.3",
+		"vite": "^7.3.1",
+		"vitest": "^4.0.18"
+	},
+	"dependencies": {
+		"picomatch": "^4.0.3",
+		"valibot": "^1.2.0"
+	},
+	"peerDependencies": {
+		"vite": "^7.3.1"
+	},
+	"peerDependenciesMeta": {
+		"vite": {
+			"optional": false
+		}
+	}
+}

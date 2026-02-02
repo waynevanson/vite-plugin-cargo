@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"moduleResolution": "bundler",
+		"module": "esnext",
+		"target": "esnext",
+		"outDir": "dist",
+		"declaration": true,
+		"declarationDir": "dist"
+	},
+	"include": ["src"]
+}
