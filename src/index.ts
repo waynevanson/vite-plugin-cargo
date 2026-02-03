@@ -74,7 +74,10 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				// for resolving `wasm-bingen` files to `outDir`.
 				context.libraries.set(hash, { id, outDir });
 
-				const metadata = ensureRustLibraryMetadata(libraryContextBase);
+				const metadata = ensureRustLibraryMetadata.call(
+					this,
+					libraryContextBase,
+				);
 
 				const wasm = buildRustLibrary(libraryContextBase, context.isServe);
 
@@ -93,12 +96,6 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 				buildWasmBindgen(pluginOptions, context, libraryContextRustBuild);
 
-				// read `.js` entry point for code resolution
-				const entrypoint = path.resolve(outDir, `${metadata.name}.js`);
-				const content = await this.fs.readFile(entrypoint, {
-					encoding: "utf8",
-				});
-
 				const libraryContextWasmBuild: LibraryContextWasmBuild = {
 					...libraryContextRustBuild,
 					name: metadata.name,
@@ -109,12 +106,28 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					await copyTypescriptDeclaration.call(this, libraryContextWasmBuild);
 				}
 
-				return {
-					code: content,
-				};
+				// read `.js` entry point for code resolution
+				const code = await readJavascriptEntryPoint.call(
+					this,
+					libraryContextWasmBuild,
+				);
+
+				return { code };
 			},
 		},
 	};
+}
+
+async function readJavascriptEntryPoint(
+	this: TransformPluginContext,
+	library: LibraryContextWasmBuild,
+) {
+	const entrypoint = path.resolve(library.outDir, `${library.name}.js`);
+	const content = await this.fs.readFile(entrypoint, {
+		encoding: "utf8",
+	});
+
+	return content;
 }
 
 async function copyTypescriptDeclaration(

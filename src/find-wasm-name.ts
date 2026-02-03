@@ -1,11 +1,15 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { TransformPluginContext } from "rollup";
 import * as v from "valibot";
 import type { MetadaSchemaOptions } from "./types";
 
 // todo: what to do there's multiple libraries for the same file?
 // Maybe add config force user to resolve this.
-export function ensureRustLibraryMetadata(options: MetadaSchemaOptions) {
+export function ensureRustLibraryMetadata(
+	this: TransformPluginContext,
+	options: MetadaSchemaOptions,
+) {
 	// validate if the file is the entrypoint to a cdylib target as rust lib
 	const metacontent = execFileSync(
 		"cargo",
@@ -15,6 +19,10 @@ export function ensureRustLibraryMetadata(options: MetadaSchemaOptions) {
 			encoding: "utf-8",
 		},
 	).trim();
+
+	const json = JSON.parse(metacontent);
+
+	this.debug({ message: json });
 
 	// find the right library from our file
 	const metadata = v.parse(MetadataSchema(options), JSON.parse(metacontent));

@@ -6,6 +6,7 @@ import wasm from "vite-plugin-wasm";
 
 describe("lib", () => {
 	test("should bundle rust to wasm", async () => {
+		process.env.DEBUG = "vite-plugin-cargo";
 		const FIXTURE = path.resolve(import.meta.dirname, "../fixtures/lib");
 
 		await expect(
@@ -18,6 +19,9 @@ describe("lib", () => {
 						entry: "./src/lib.rs",
 						formats: ["es"],
 						fileName: "index",
+					},
+					rollupOptions: {
+						logLevel: "debug",
 					},
 				},
 			}),
