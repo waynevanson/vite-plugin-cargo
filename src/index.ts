@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { globSync } from "node:fs";
 import path from "node:path";
-import picomatch from "picomatch";
+import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
 import { compileRustLibrary as buildRustLibrary } from "./compile-rust-library";
 import { ensureRustLibraryMetadata } from "./find-wasm-name";
@@ -10,6 +10,7 @@ import {
 	createLibraryHash,
 	type LibraryContextBase,
 	type LibraryContextRustBuild,
+	type LibraryContextWasmBuild,
 	type LibraryDir,
 } from "./library";
 import {
@@ -31,7 +32,6 @@ export interface PluginContext {
 
 export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 	const pluginOptions = parsePluginOptions(pluginOptions_);
-	const matches = picomatch(pluginOptions.includes, { dot: true });
 
 	const context = {
 		isServe: false,
@@ -57,17 +57,13 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			return path.resolve(outDir, source);
 		},
 		transform: {
+			// todo: throw when importing a non-entry point.
+			// todo: consider: way in the future we could enable users to import any rust file
+			// and we'll add overrides instead of relying on Cargo.toml for `lib` information.
 			filter: {
 				id: pluginOptions.includes,
 			},
 			async handler(_code, id) {
-				// todo: throw when importing a non-entry point.
-				// todo: consider: way in the future we could enable users to import any rust file
-				// and we'll add overrides instead of relying on Cargo.toml for `lib` information.
-				if (!matches(id)) {
-					return null;
-				}
-
 				const project = getClosestCargoProject(id);
 				const libraryContextBase: LibraryContextBase = { id, project };
 
@@ -103,11 +99,14 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					encoding: "utf8",
 				});
 
+				const libraryContextWasmBuild: LibraryContextWasmBuild = {
+					...libraryContextRustBuild,
+					name: metadata.name,
+				};
+
 				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.
 				if (pluginOptions.typescript) {
-					const source = path.join(outDir, `${metadata.name}.d.ts`);
-					const target = `${id}.d.ts`;
-					await this.fs.copyFile(source, target);
+					await copyTypescriptDeclaration.call(this, libraryContextWasmBuild);
 				}
 
 				return {
@@ -116,6 +115,15 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			},
 		},
 	};
+}
+
+async function copyTypescriptDeclaration(
+	this: TransformPluginContext,
+	library: LibraryContextWasmBuild,
+) {
+	const source = path.join(library.outDir, `${library.name}.d.ts`);
+	const target = `${library.id}.d.ts`;
+	await this.fs.copyFile(source, target);
 }
 
 export function getClosestCargoProject(id: string) {

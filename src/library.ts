@@ -12,6 +12,10 @@ export type LibraryContextRustBuild = LibraryContextBase & {
 	wasm: string;
 };
 
+export type LibraryContextWasmBuild = LibraryContextRustBuild & {
+	name: string;
+};
+
 export type Hash = string;
 
 export function createLibraryHash(library: LibraryContextBase): Hash {
