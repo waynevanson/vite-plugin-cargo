@@ -31,14 +31,13 @@ export interface PluginContext {
 
 export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 	const pluginOptions = parsePluginOptions(pluginOptions_);
-	const matches = picomatch(pluginOptions.includes, { contains: true });
+	const matches = picomatch(pluginOptions.includes, { dot: true });
 
 	const context = {
 		isServe: false,
 		libraries: new Map<string, Library>(),
 	};
 
-	console.log("wadup");
 	return {
 		name: "vite-plugin-cargo",
 		configResolved(config) {

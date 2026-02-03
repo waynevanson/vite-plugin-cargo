@@ -12,13 +12,12 @@ describe("lib", () => {
 			build({
 				root: FIXTURE,
 				logLevel: "error",
-				// todo: make plugin only this compatbale.
-				// .dot true
 				plugins: [cargo({ includes: "**/src/lib.rs" }), wasm()],
 				build: {
 					lib: {
 						entry: "./src/lib.rs",
 						formats: ["es"],
+						fileName: "index",
 					},
 				},
 			}),
