@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import * as crypto from "node:crypto";
 import { globSync } from "node:fs";
 import path from "node:path";
 import picomatch from "picomatch";
@@ -7,32 +6,22 @@ import type { Plugin } from "vite";
 import { compileRustLibrary as buildRustLibrary } from "./compile-rust-library";
 import { ensureRustLibraryMetadata } from "./find-wasm-name";
 import {
+	createLibraryDir,
+	createLibraryHash,
+	type LibraryContextBase,
+	type LibraryContextRustBuild,
+	type LibraryDir,
+} from "./library";
+import {
+	type VitePluginCargoOptionsInternal as PluginOptions,
 	parsePluginOptions,
-	VitePluginCargoOptionsInternal as PluginOptions,
 	type VitePluginCargoOptions,
 } from "./plugin-options";
-import type { MetadaSchemaOptions } from "./types";
+import { isString } from "./utils";
 
-const CACHE_DIR = "node_modules/.cache/vitest-plugin-cargo";
-
-// 1. Plugin for Rust -> WASM -> WASM + ESM
-// Dependencies:
-// 1. `cargo`
-// 2. `wasm_bindgen`
-// todo: ensure that all rust files required match.
-// the transform?
-
-function createProjectHash(options: MetadaSchemaOptions) {
-	return crypto
-		.createHash("sha256")
-		.update(`${options.project}:${options.id}`)
-		.digest("hex");
-}
-
-interface Library {
+export interface Library {
 	id: string;
-	// todo: should replace hash with `${hash.slice(0, 2)}/${hash.slice(2)}`
-	outDir: string;
+	outDir: LibraryDir;
 }
 
 export interface PluginContext {
@@ -49,6 +38,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 		libraries: new Map<string, Library>(),
 	};
 
+	console.log("wadup");
 	return {
 		name: "vite-plugin-cargo",
 		configResolved(config) {
@@ -82,8 +72,8 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				const project = getClosestCargoProject(id);
 				const libraryContextBase: LibraryContextBase = { id, project };
 
-				const hash = createProjectHash(libraryContextBase);
-				const outDir = path.resolve(CACHE_DIR, hash);
+				const hash = createLibraryHash(libraryContextBase);
+				const outDir = createLibraryDir(hash);
 
 				// keep track of libraries compiled
 				// for resolving `wasm-bingen` files to `outDir`.
@@ -99,14 +89,14 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					this.addWatchFile(path.resolve(basename));
 				}
 
-				const LibraryContextRustBuild: LibraryContextRustBuild = {
+				const libraryContextRustBuild: LibraryContextRustBuild = {
 					id,
 					outDir,
 					project,
 					wasm,
 				};
 
-				buildWasmBindgen(pluginOptions, context, LibraryContextRustBuild);
+				buildWasmBindgen(pluginOptions, context, libraryContextRustBuild);
 
 				// read `.js` entry point for code resolution
 				const entrypoint = path.resolve(outDir, `${metadata.name}.js`);
@@ -137,16 +127,6 @@ export function getClosestCargoProject(id: string) {
 	}).trim();
 }
 
-type LibraryContextBase = {
-	id: string;
-	project: string;
-};
-
-type LibraryContextRustBuild = LibraryContextBase & {
-	outDir: string;
-	wasm: string;
-};
-
 // create `.js` from `.wasm`
 //
 // `.js` and `.wasm` files are created in outDir,
@@ -163,7 +143,7 @@ export function buildWasmBindgen(
 		context.isServe && `--debug`,
 		`--out-dir=${library.outDir}`,
 		library.wasm,
-	].filter((a): a is string => typeof a === "string");
+	].filter(isString);
 
 	execFileSync("wasm-bindgen", args);
 }

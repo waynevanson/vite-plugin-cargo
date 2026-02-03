@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { MetadaSchemaOptions } from "./types";
+import { isString } from "./utils";
 
 export function compileRustLibrary(
 	options: MetadaSchemaOptions,
@@ -15,7 +16,7 @@ export function compileRustLibrary(
 		"--color=never",
 		"--quiet",
 		isServe || "--release",
-	].filter((a): a is string => typeof a === "string");
+	].filter(isString);
 
 	const ndjson = execFileSync("cargo", args, {
 		cwd: path.dirname(options.id),
