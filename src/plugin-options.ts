@@ -1,4 +1,3 @@
-import type picomatch from "picomatch";
 import type { StringFilter } from "rollup";
 import * as v from "valibot";
 
