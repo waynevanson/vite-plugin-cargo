@@ -60,7 +60,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 		},
 		transform: {
 			filter: {
-				id: pluginOptions.includes,
+				id: pluginOptions.pattern,
 			},
 			// todo: throw when importing a non-entry point.
 			// todo: consider: way in the future we could enable users to import any rust file

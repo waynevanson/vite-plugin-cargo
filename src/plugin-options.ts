@@ -1,4 +1,5 @@
 import type picomatch from "picomatch";
+import type { StringFilter } from "rollup";
 import * as v from "valibot";
 
 const enable = v.optional(v.boolean(), false);
@@ -17,12 +18,22 @@ const FeaturesSchema = v.pipe(
 	v.transform((features) => ({ features })),
 );
 
+const PatternSchema = v.union([v.string(), v.instance(RegExp)]);
+const MaybeArraySchema = <TSchema extends v.GenericSchema>(schema: TSchema) =>
+	v.union([schema, v.array(schema)]);
+
+const StringFilterSchema: v.GenericSchema<StringFilter> = v.union([
+	PatternSchema,
+	MaybeArraySchema(PatternSchema),
+	v.object({
+		include: v.optional(v.union([MaybeArraySchema(PatternSchema)])),
+		exclude: v.optional(v.union([MaybeArraySchema(PatternSchema)])),
+	}),
+]);
+
 const VitePluginCargoOptionsBaseSchema = v.pipe(
 	v.object({
-		includes: v.union(
-			[v.string(), v.array(v.string())],
-			"Glob",
-		) as v.GenericSchema<picomatch.Glob>,
+		pattern: StringFilterSchema,
 		noTypescript: enable,
 		browserOnly: enable,
 		cargoBuildOverrides: v.optional(
@@ -36,7 +47,7 @@ const VitePluginCargoOptionsBaseSchema = v.pipe(
 	v.transform((base) => ({
 		typescript: !base.noTypescript,
 		browserless: !base.browserOnly,
-		includes: base.includes,
+		pattern: base.pattern,
 		cargoBuildOverrides: base.cargoBuildOverrides,
 	})),
 );
