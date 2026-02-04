@@ -4,6 +4,10 @@
 	"description": "Import wasm_bingen compatible Rust to JavaScript via Vite",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"exports": {
+		"default": "./dist/index.js",
+		"types": "./dist/index.d.ts"
+	},
 	"type": "module",
 	"repository": {
 		"url": "https://github.com/waynevanson/vite-plugin-cargo"

@@ -2,11 +2,8 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
-import {
-	compileRustLibrary as buildRustLibrary,
-	compileRustLibrary,
-	processArtifacts,
-} from "./compile-rust-library";
+import { compileRustLibrary, getClosestCargoProject } from "./cargo";
+import { deriveLibraryArtifact } from "./compile-rust-library";
 import { debug } from "./debug";
 import { getLibraryData, getRustMetadata } from "./find-wasm-name";
 import {
@@ -18,8 +15,8 @@ import {
 	type LibraryDir,
 } from "./library";
 import {
-	parsePluginOptions,
 	type VitePluginCargoOptionsInternal as PluginOptions,
+	parsePluginOptions,
 	type VitePluginCargoOptions,
 } from "./plugin-options";
 import { isString } from "./utils";
@@ -96,7 +93,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					context.isServe,
 				);
 
-				const rustLibrary = await processArtifacts.call(
+				const rustLibrary = await deriveLibraryArtifact.call(
 					this,
 					artifacts,
 					libraryContextBase,
@@ -113,7 +110,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					id,
 					outDir,
 					project,
-					wasm: rustLibrary.wasm,
+					wasm: rustLibrary.wasmFilename,
 				};
 
 				buildWasmBindgen(pluginOptions, context, libraryContextRustBuild);
@@ -159,22 +156,6 @@ async function copyTypescriptDeclaration(
 	const source = path.join(library.outDir, `${library.name}.d.ts`);
 	const target = `${library.id}.d.ts`;
 	await this.fs.copyFile(source, target);
-}
-
-export function getClosestCargoProject(id: string) {
-	const args = ["locate-project", "--message-format=plain"];
-
-	debug("cargo %s", args.join(" "));
-
-	const project = execFileSync("cargo", args, {
-		stdio: ["ignore", "pipe", "ignore"],
-		encoding: "utf-8",
-		cwd: path.dirname(id),
-	}).trim();
-
-	debug("project %o", project);
-
-	return project;
 }
 
 // create `.js` from `.wasm`
