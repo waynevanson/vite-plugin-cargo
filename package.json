@@ -23,8 +23,8 @@
 		"vite-plugin"
 	],
 	"scripts": {
-		"build": "tsc",
-		"prepublishOnly": "tsc"
+		"build": "vite build",
+		"prepublishOnly": "vite build"
 	},
 	"author": "Wayne Van Son",
 	"license": "MIT",
