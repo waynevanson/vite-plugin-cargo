@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
-import { deriveLibraryArtifact } from "./artifacts";
+import { deriveLibraryArtifact as findLibraryArtifact } from "./artifacts";
 import { cargoBuild, cargoLocateProject, cargoMetadata } from "./cargo";
 import { debug } from "./debug";
 import {
@@ -13,7 +13,7 @@ import {
 	type LibraryContextWasmBuild,
 	type LibraryDir,
 } from "./library";
-import { getLibraryData } from "./metadata";
+import { findLibraryMetadata } from "./metadata";
 import {
 	type VitePluginCargoOptionsInternal as PluginOptions,
 	parsePluginOptions,
@@ -31,11 +31,10 @@ export interface PluginContext {
 	libraries: Map<string, Library>;
 }
 
-// use our own debugger for debugging.
 export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 	const pluginOptions = parsePluginOptions(pluginOptions_);
 
-	const context = {
+	const context: PluginContext = {
 		isServe: false,
 		libraries: new Map<string, Library>(),
 	};
@@ -78,12 +77,12 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				// for resolving `wasm-bingen` files to `outDir`.
 				context.libraries.set(hash, { id, outDir });
 
-				const metadatas = cargoMetadata(libraryContextBase);
+				const projectMetadata = cargoMetadata(libraryContextBase);
 
 				// find the right library from our file
-				const metadata = getLibraryData.call(
+				const libraryMetadata = findLibraryMetadata.call(
 					this,
-					metadatas,
+					projectMetadata,
 					libraryContextBase,
 				);
 
@@ -93,7 +92,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					pluginOptions.cargoBuildOverrides,
 				);
 
-				const rustLibrary = await deriveLibraryArtifact.call(
+				const rustLibrary = await findLibraryArtifact.call(
 					this,
 					artifacts,
 					libraryContextBase,
@@ -117,7 +116,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 				const libraryContextWasmBuild: LibraryContextWasmBuild = {
 					...libraryContextRustBuild,
-					name: metadata.libraryName,
+					name: libraryMetadata.name,
 				};
 
 				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.
