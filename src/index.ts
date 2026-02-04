@@ -2,10 +2,10 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
-import { compileRustLibrary, getClosestCargoProject } from "./cargo";
+import { cargoBuild, cargoLocateProject, cargoMetadata } from "./cargo";
 import { deriveLibraryArtifact } from "./compile-rust-library";
 import { debug } from "./debug";
-import { getLibraryData, getRustMetadata } from "./find-wasm-name";
+import { getLibraryData } from "./find-wasm-name";
 import {
 	createLibraryDir,
 	createLibraryHash,
@@ -66,7 +66,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			// todo: consider: way in the future we could enable users to import any rust file
 			// and we'll add overrides instead of relying on Cargo.toml for `lib` information.
 			async handler(_code, id) {
-				const project = getClosestCargoProject(id);
+				const project = cargoLocateProject(id);
 				const libraryContextBase: LibraryContextBase = { id, project };
 
 				const hash = createLibraryHash(libraryContextBase);
@@ -78,7 +78,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				// for resolving `wasm-bingen` files to `outDir`.
 				context.libraries.set(hash, { id, outDir });
 
-				const metadatas = getRustMetadata(libraryContextBase);
+				const metadatas = cargoMetadata(libraryContextBase);
 
 				// find the right library from our file
 				const metadata = getLibraryData.call(
@@ -87,11 +87,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					libraryContextBase,
 				);
 
-				const artifacts = await compileRustLibrary.call(
-					this,
-					libraryContextBase,
-					context.isServe,
-				);
+				const artifacts = await cargoBuild(libraryContextBase, context.isServe);
 
 				const rustLibrary = await deriveLibraryArtifact.call(
 					this,

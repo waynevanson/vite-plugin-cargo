@@ -5,6 +5,7 @@ A Vite plugin that seamlessly integrates Rust crates into your frontend project 
 ## Features
 
 - **Zero-Config Compiling**: Automatically detects the closest `Cargo.toml`.
+- **Watch mode**: Watches dependencies related to the entrypoint.
 - **WASM-Bindgen Integration**: Generates the necessary JS glue code automatically.
 - **TypeScript Support**: Automatically generates and syncs `.d.ts` files for your Rust exports.
 - **HMR Support**: Works with Vite's dev server.
@@ -38,7 +39,8 @@ import { cargo } from "vite-plugin-cargo";
 export default defineConfig({
   plugins: [
     cargo({
-      includes: ["src/lib.rs"], // Files to treat as Cargo entrypoints
+      // Files to treat as Cargo entrypoints
+      includes: ["**/src/lib.rs"],
     }),
   ],
 });
@@ -88,11 +90,11 @@ console.log(greet("Vite"));
 
 ### Base Configuration
 
-| Option         | Type      | Description                                      |
-| :------------- | :-------- | :----------------------------------------------- |
-| `includes`     | `string   | string[]` Glob pattern of Rust files to process. |
-| `browserOnly`  | `boolean` | (Optional) Passes `--browser` to `wasm-bindgen`. |
-| `noTypescript` | `boolean` | (Optional) Disables `.d.ts` generation.          |
+| Option         | Type                 | Description                                      |
+| :------------- | :------------------- | :----------------------------------------------- |
+| `includes`     | `string \| string[]` | Glob patterns of possible entry points.          |
+| `browserOnly`  | `boolean`            | (Optional) Passes `--browser` to `wasm-bindgen`. |
+| `noTypescript` | `boolean`            | (Optional) Disables `.d.ts` generation.          |
 
 ### Rust Features
 

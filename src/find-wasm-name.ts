@@ -1,24 +1,6 @@
-import { execFileSync } from "node:child_process";
-import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import * as v from "valibot";
-import { debug } from "./debug";
 import type { MetadaSchemaOptions } from "./types";
-
-export function getRustMetadata(options: MetadaSchemaOptions) {
-	const args = ["metadata", "--no-deps", "--format-version=1"];
-	debug("cargo %s", args.join(" "));
-	const metacontent = execFileSync("cargo", args, {
-		cwd: path.dirname(options.id),
-		encoding: "utf-8",
-	}).trim();
-
-	const json = JSON.parse(metacontent);
-
-	debug("metadata %s", JSON.stringify(json, null, 2));
-
-	return json;
-}
 
 export function getLibraryData(
 	this: TransformPluginContext,

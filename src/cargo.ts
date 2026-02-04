@@ -1,11 +1,10 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import type { TransformPluginContext } from "rollup";
 import { debug } from "./debug";
 import type { MetadaSchemaOptions } from "./types";
 import { isString } from "./utils";
 
-export function getClosestCargoProject(id: string) {
+export function cargoLocateProject(id: string) {
 	const args = ["locate-project", "--message-format=plain"];
 
 	debug("cargo %s", args.join(" "));
@@ -21,8 +20,7 @@ export function getClosestCargoProject(id: string) {
 	return project;
 }
 
-export async function compileRustLibrary(
-	this: TransformPluginContext,
+export async function cargoBuild(
 	options: MetadaSchemaOptions,
 	isServe: boolean,
 ) {
@@ -55,5 +53,20 @@ export async function compileRustLibrary(
 	debug("artifacts %o", json);
 
 	// todo: validate json data
+	return json;
+}
+
+export function cargoMetadata(options: MetadaSchemaOptions) {
+	const args = ["metadata", "--no-deps", "--format-version=1"];
+	debug("cargo %s", args.join(" "));
+	const metacontent = execFileSync("cargo", args, {
+		cwd: path.dirname(options.id),
+		encoding: "utf-8",
+	}).trim();
+
+	const json = JSON.parse(metacontent);
+
+	debug("metadata %s", JSON.stringify(json, null, 2));
+
 	return json;
 }
