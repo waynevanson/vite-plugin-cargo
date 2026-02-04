@@ -4,6 +4,7 @@ import type { MetadaSchemaOptions } from "./types";
 import { isString } from "./utils";
 import { TransformPluginContext } from "rollup";
 import { debug } from "./debug";
+import { LibraryContextBase } from "./library";
 
 export async function compileRustLibrary(
 	this: TransformPluginContext,
@@ -39,26 +40,52 @@ export async function compileRustLibrary(
 
 	debug("artifacts %o", json);
 
+	return json;
+}
+
+export async function processArtifacts(
+	this: TransformPluginContext,
+	artifacts: Array<any>,
+	options: LibraryContextBase,
+) {
 	// todo: validation and error messages
-	const artifact = json
+	const artifact = artifacts
 		.filter((a) => a?.reason === "compiler-artifact")
 		.filter((a) => a?.manifest_path === options.project)?.[0];
 
-	const filename: string = artifact?.filenames?.[0];
+	const libraryName = artifact.target.name;
+	const wasmFileName: string = artifact?.filenames?.[0];
 
-	const wasm = artifact.target.name;
-	const depfile = path.resolve(filename, "../deps", `${wasm}.d`);
-	const depcontents = await this.fs.readFile(depfile, { encoding: "utf8" });
+	const depcontents = await readDependenciesFile.call(this, artifact);
 
-	const graph = createDependencyGraph(depcontents);
+	const graph = createGraphFromDependencies(depcontents);
 
-	const start = path.resolve(filename, "../deps", `${wasm}.wasm`);
+	const start = path.resolve(wasmFileName, "../deps", `${libraryName}.wasm`);
 	const neighbours = getNeighbours(start, graph);
 
-	return { wasm: filename, neighbours };
+	return { wasm: wasmFileName, neighbours };
 }
 
-function createDependencyGraph(contents: string) {
+async function readDependenciesFile(
+	this: TransformPluginContext,
+	artifact: { target: { name: string }; filenames: Array<string> },
+) {
+	const libraryName = artifact.target.name;
+	const wasmFilename: string = artifact?.filenames?.[0];
+	const dependencyFilepath = path.resolve(
+		wasmFilename,
+		"../deps",
+		`${libraryName}.d`,
+	);
+
+	const contents = await this.fs.readFile(dependencyFilepath, {
+		encoding: "utf8",
+	});
+
+	return contents;
+}
+
+function createGraphFromDependencies(contents: string) {
 	return new Map(
 		contents
 			.split("\n")

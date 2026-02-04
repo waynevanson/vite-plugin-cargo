@@ -2,7 +2,11 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
-import { compileRustLibrary as buildRustLibrary } from "./compile-rust-library";
+import {
+	compileRustLibrary as buildRustLibrary,
+	compileRustLibrary,
+	processArtifacts,
+} from "./compile-rust-library";
 import { debug } from "./debug";
 import { getLibraryData, getRustMetadata } from "./find-wasm-name";
 import {
@@ -86,10 +90,16 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					libraryContextBase,
 				);
 
-				const rustLibrary = await buildRustLibrary.call(
+				const artifacts = await compileRustLibrary.call(
 					this,
 					libraryContextBase,
 					context.isServe,
+				);
+
+				const rustLibrary = await processArtifacts.call(
+					this,
+					artifacts,
+					libraryContextBase,
 				);
 
 				debug("watching-dependencies %s", rustLibrary.neighbours);
