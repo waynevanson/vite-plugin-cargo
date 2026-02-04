@@ -90,11 +90,12 @@ console.log(greet("Vite"));
 
 ### Base Configuration
 
-| Option         | Type                 | Description                                      |
-| :------------- | :------------------- | :----------------------------------------------- |
-| `includes`     | `string \| string[]` | Glob patterns of possible entry points.          |
-| `browserOnly`  | `boolean`            | (Optional) Passes `--browser` to `wasm-bindgen`. |
-| `noTypescript` | `boolean`            | (Optional) Disables `.d.ts` generation.          |
+| Option                | Type                                     | Description                                      |
+| :-------------------- | :--------------------------------------- | :----------------------------------------------- |
+| `includes`            | `string \| string[]`                     | Glob patterns of possible entry points.          |
+| `browserOnly`         | `boolean`                                | (Optional) Passes `--browser` to `wasm-bindgen`. |
+| `noTypescript`        | `boolean`                                | (Optional) Disables `.d.ts` generation.          |
+| `cargoBuildOverrides` | `(args: Array<string>) => Array<string>` | (Optional) Override args to `cargo build`.       |
 
 ### Rust Features
 

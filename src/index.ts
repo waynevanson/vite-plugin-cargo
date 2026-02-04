@@ -87,7 +87,11 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					libraryContextBase,
 				);
 
-				const artifacts = await cargoBuild(libraryContextBase, context.isServe);
+				const artifacts = await cargoBuild(
+					libraryContextBase,
+					context.isServe,
+					pluginOptions.cargoBuildOverrides,
+				);
 
 				const rustLibrary = await deriveLibraryArtifact.call(
 					this,

@@ -40,9 +40,10 @@ export function cargoMetadata(options: MetadaSchemaOptions) {
 export async function cargoBuild(
 	options: MetadaSchemaOptions,
 	isServe: boolean,
+	overrides: undefined | ((args: Array<string>) => Array<string>),
 ) {
 	// create `.wasm` from `.rs`
-	const args = [
+	let args = [
 		"build",
 		"--lib",
 		"--target=wasm32-unknown-unknown",
@@ -52,7 +53,12 @@ export async function cargoBuild(
 		isServe || "--release",
 	].filter(isString);
 
-	debug("cargo %s", args.join(" "));
+	debug("cargo-raw-args %s", args.join(" "));
+
+	if (overrides) {
+		args = overrides(args);
+		debug("cargo-override-args %s", args.join(" "));
+	}
 
 	const ndjson = execFileSync("cargo", args, {
 		cwd: path.dirname(options.id),

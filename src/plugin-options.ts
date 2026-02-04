@@ -25,11 +25,19 @@ const VitePluginCargoOptionsBaseSchema = v.pipe(
 		) as v.GenericSchema<picomatch.Glob>,
 		noTypescript: enable,
 		browserOnly: enable,
+		cargoBuildOverrides: v.optional(
+			v.pipe(
+				v.function(),
+				v.args(v.strictTuple([v.array(v.string())])),
+				v.returns(v.array(v.string())),
+			),
+		),
 	}),
 	v.transform((base) => ({
 		typescript: !base.noTypescript,
 		browserless: !base.browserOnly,
 		includes: base.includes,
+		cargoBuildOverrides: base.cargoBuildOverrides,
 	})),
 );
 
