@@ -2,8 +2,8 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
+import { deriveLibraryArtifact } from "./artifacts";
 import { cargoBuild, cargoLocateProject, cargoMetadata } from "./cargo";
-import { deriveLibraryArtifact } from "./compile-rust-library";
 import { debug } from "./debug";
 import {
 	createLibraryDir,
@@ -113,7 +113,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 				const libraryContextWasmBuild: LibraryContextWasmBuild = {
 					...libraryContextRustBuild,
-					name: metadata.name,
+					name: metadata.libraryName,
 				};
 
 				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.

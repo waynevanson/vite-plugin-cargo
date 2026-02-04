@@ -22,6 +22,21 @@ export function cargoLocateProject(id: string) {
 	return project;
 }
 
+export function cargoMetadata(options: MetadaSchemaOptions) {
+	const args = ["metadata", "--no-deps", "--format-version=1"];
+	debug("cargo %s", args.join(" "));
+	const metacontent = execFileSync("cargo", args, {
+		cwd: path.dirname(options.id),
+		encoding: "utf-8",
+	}).trim();
+
+	const json = JSON.parse(metacontent);
+
+	debug("metadata %s", JSON.stringify(json, null, 2));
+
+	return v.parse(MetadataSchema, json);
+}
+
 export async function cargoBuild(
 	options: MetadaSchemaOptions,
 	isServe: boolean,
@@ -56,19 +71,4 @@ export async function cargoBuild(
 
 	// todo: validate json data
 	return json;
-}
-
-export function cargoMetadata(options: MetadaSchemaOptions) {
-	const args = ["metadata", "--no-deps", "--format-version=1"];
-	debug("cargo %s", args.join(" "));
-	const metacontent = execFileSync("cargo", args, {
-		cwd: path.dirname(options.id),
-		encoding: "utf-8",
-	}).trim();
-
-	const json = JSON.parse(metacontent);
-
-	debug("metadata %s", JSON.stringify(json, null, 2));
-
-	return v.parse(MetadataSchema, json);
 }
