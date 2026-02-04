@@ -7,11 +7,38 @@ export function getLibraryData(
 	metadata: unknown,
 	options: MetadaSchemaOptions,
 ) {
-	return v.parse(MetadataSchema(options), metadata);
+	return v.parse(singleMetaSchema(options), metadata);
 }
 
+// There's more data but we're only going to validate what we need
+export const MetadataSchema = v.object({
+	packages: v.array(
+		v.object({
+			name: v.string(),
+			id: v.string(),
+			manifest_path: v.string(),
+			dependencies: v.array(
+				v.object({
+					name: v.string(),
+					source: v.string(),
+					req: v.string(),
+					kind: v.nullable(v.string()),
+				}),
+			),
+			targets: v.array(
+				v.object({
+					kind: v.array(v.string()),
+					crate_types: v.array(v.string()),
+					name: v.string(),
+					src_path: v.string(),
+				}),
+			),
+		}),
+	),
+});
+
 // todo: Replace all schema with only parsing what we need to searching.
-const MetadataSchema = (options: MetadaSchemaOptions) =>
+const singleMetaSchema = (options: MetadaSchemaOptions) =>
 	v.nonNullish(
 		v.pipe(
 			v.object({

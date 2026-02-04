@@ -5,7 +5,6 @@ import type { Plugin } from "vite";
 import { cargoBuild, cargoLocateProject, cargoMetadata } from "./cargo";
 import { deriveLibraryArtifact } from "./compile-rust-library";
 import { debug } from "./debug";
-import { getLibraryData } from "./find-wasm-name";
 import {
 	createLibraryDir,
 	createLibraryHash,
@@ -14,6 +13,7 @@ import {
 	type LibraryContextWasmBuild,
 	type LibraryDir,
 } from "./library";
+import { getLibraryData } from "./metadata";
 import {
 	type VitePluginCargoOptionsInternal as PluginOptions,
 	parsePluginOptions,

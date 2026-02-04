@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import * as v from "valibot";
 import { debug } from "./debug";
+import { MetadataSchema } from "./metadata";
 import type { MetadaSchemaOptions } from "./types";
 import { isString } from "./utils";
 
@@ -68,5 +70,5 @@ export function cargoMetadata(options: MetadaSchemaOptions) {
 
 	debug("metadata %s", JSON.stringify(json, null, 2));
 
-	return json;
+	return v.parse(MetadataSchema, json);
 }
