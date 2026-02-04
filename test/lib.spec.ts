@@ -1,8 +1,8 @@
 import path from "node:path";
 import { build } from "vite";
+import wasm from "vite-plugin-wasm";
 import { describe, expect, test } from "vitest";
 import { cargo } from "../src/index";
-import wasm from "vite-plugin-wasm";
 
 describe("lib", () => {
 	test("should bundle rust to wasm", async () => {

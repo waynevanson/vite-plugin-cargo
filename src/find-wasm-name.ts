@@ -2,8 +2,8 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import * as v from "valibot";
-import type { MetadaSchemaOptions } from "./types";
 import { debug } from "./debug";
+import type { MetadaSchemaOptions } from "./types";
 
 export function getRustMetadata(options: MetadaSchemaOptions) {
 	const args = ["metadata", "--no-deps", "--format-version=1"];
