@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { globSync } from "node:fs";
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
 import { compileRustLibrary as buildRustLibrary } from "./compile-rust-library";
-import { ensureRustLibraryMetadata } from "./find-wasm-name";
+import { debug } from "./debug";
+import { getLibraryData, getRustMetadata } from "./find-wasm-name";
 import {
 	createLibraryDir,
 	createLibraryHash,
@@ -14,8 +14,8 @@ import {
 	type LibraryDir,
 } from "./library";
 import {
-	type VitePluginCargoOptionsInternal as PluginOptions,
 	parsePluginOptions,
+	type VitePluginCargoOptionsInternal as PluginOptions,
 	type VitePluginCargoOptions,
 } from "./plugin-options";
 import { isString } from "./utils";
@@ -30,6 +30,7 @@ export interface PluginContext {
 	libraries: Map<string, Library>;
 }
 
+// use our own debugger for debugging.
 export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 	const pluginOptions = parsePluginOptions(pluginOptions_);
 
@@ -57,12 +58,12 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			return path.resolve(outDir, source);
 		},
 		transform: {
-			// todo: throw when importing a non-entry point.
-			// todo: consider: way in the future we could enable users to import any rust file
-			// and we'll add overrides instead of relying on Cargo.toml for `lib` information.
 			filter: {
 				id: pluginOptions.includes,
 			},
+			// todo: throw when importing a non-entry point.
+			// todo: consider: way in the future we could enable users to import any rust file
+			// and we'll add overrides instead of relying on Cargo.toml for `lib` information.
 			async handler(_code, id) {
 				const project = getClosestCargoProject(id);
 				const libraryContextBase: LibraryContextBase = { id, project };
@@ -70,28 +71,39 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				const hash = createLibraryHash(libraryContextBase);
 				const outDir = createLibraryDir(hash);
 
+				debug("library %s", { hash, id, outDir });
+
 				// keep track of libraries compiled
 				// for resolving `wasm-bingen` files to `outDir`.
 				context.libraries.set(hash, { id, outDir });
 
-				const metadata = ensureRustLibraryMetadata.call(
+				const metadatas = getRustMetadata(libraryContextBase);
+
+				// find the right library from our file
+				const metadata = getLibraryData.call(
 					this,
+					metadatas,
 					libraryContextBase,
 				);
 
-				const wasm = buildRustLibrary(libraryContextBase, context.isServe);
+				const rustLibrary = await buildRustLibrary.call(
+					this,
+					libraryContextBase,
+					context.isServe,
+				);
 
-				// todo: filter watchable files by dependencies
-				// after building rust, check the `deps/<crate-identifier>.d` for makefile dependency graph.
-				for (const basename of globSync(pluginOptions.includes)) {
-					this.addWatchFile(path.resolve(basename));
+				debug("watching-dependencies %s", rustLibrary.neighbours);
+
+				// Watch for files only
+				for (const neighbour of rustLibrary.neighbours) {
+					this.addWatchFile(neighbour);
 				}
 
 				const libraryContextRustBuild: LibraryContextRustBuild = {
 					id,
 					outDir,
 					project,
-					wasm,
+					wasm: rustLibrary.wasm,
 				};
 
 				buildWasmBindgen(pluginOptions, context, libraryContextRustBuild);
@@ -140,11 +152,19 @@ async function copyTypescriptDeclaration(
 }
 
 export function getClosestCargoProject(id: string) {
-	return execFileSync("cargo", ["locate-project", "--message-format=plain"], {
+	const args = ["locate-project", "--message-format=plain"];
+
+	debug("cargo %s", args.join(" "));
+
+	const project = execFileSync("cargo", args, {
 		stdio: ["ignore", "pipe", "ignore"],
 		encoding: "utf-8",
 		cwd: path.dirname(id),
 	}).trim();
+
+	debug("project %o", project);
+
+	return project;
 }
 
 // create `.js` from `.wasm`
@@ -164,6 +184,8 @@ export function buildWasmBindgen(
 		`--out-dir=${library.outDir}`,
 		library.wasm,
 	].filter(isString);
+
+	debug("wasm-bindgen %s", args.join(" "));
 
 	execFileSync("wasm-bindgen", args);
 }

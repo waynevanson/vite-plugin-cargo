@@ -1,50 +1,50 @@
-const d = "data:application/wasm;base64,AGFzbQEAAAABCgJgAABgAnx8AXwCLwELLi9saWJfYmcuanMfX193YmluZGdlbl9pbml0X2V4dGVybnJlZl90YWJsZQAAAwIBAQQFAW8AgAEFAwEAEQYJAX8BQYCAwAALBzsEBm1lbW9yeQIAA2FkZAABFV9fd2JpbmRnZW5fZXh0ZXJucmVmcwEAEF9fd2JpbmRnZW5fc3RhcnQAAAoJAQcAIAAgAaALC8oHAgBBgIDAAAugByBpbmRleCBvdXQgb2YgYm91bmRzOiB0aGUgbGVuIGlzIMASIGJ1dCB0aGUgaW5kZXggaXMgwABsaWJyYXJ5L2NvcmUvc3JjL2ZtdC9udW0ucnMAL2hvbWUvd2F5bmV2YW5zb24vLmNhcmdvL3JlZ2lzdHJ5L3NyYy9pbmRleC5jcmF0ZXMuaW8tMTk0OWNmOGM2YjViNTU3Zi93YXNtLWJpbmRnZW4tMC4yLjEwOC9zcmMvZXh0ZXJucmVmLnJzAGxpYnJhcnkvYWxsb2Mvc3JjL3Jhd192ZWMvbW9kLnJzAC9ydXN0L2RlcHMvZGxtYWxsb2MtMC4yLjExL3NyYy9kbG1hbGxvYy5ycwBsaWJyYXJ5L3N0ZC9zcmMvYWxsb2MucnMAFW1lbW9yeSBhbGxvY2F0aW9uIG9mIMANIGJ5dGVzIGZhaWxlZAAAUwAQAGwAAAB/AAAAEQAAAFMAEABsAAAAjAAAABEAAAAMkRtBRc1DSn6J8happJYRbV3L1ixQ62N4QaZXcRuLuQwBEAAYAAAAcAEAAAkAAAADAAAADAAAAAQAAAAEAAAABQAAAAYAAAAHAAAAEAAAAAQAAAAIAAAACQAAAAoAAAALAAAAAAAAAAgAAAAEAAAADAAAAA0AAAAOAAAADwAAAAAAAAAIAAAABAAAABAAAABhc3NlcnRpb24gZmFpbGVkOiBwc2l6ZSA+PSBzaXplICsgbWluX292ZXJoZWFkAADhABAAKgAAALEEAAAJAAAAYXNzZXJ0aW9uIGZhaWxlZDogcHNpemUgPD0gc2l6ZSArIG1heF9vdmVyaGVhZAAA4QAQACoAAAC3BAAADQAAAAMAAAAMAAAABAAAABEAAABjYXBhY2l0eSBvdmVyZmxvdwAAAMAAEAAgAAAAHAAAAAUAAAAwMDAxMDIwMzA0MDUwNjA3MDgwOTEwMTExMjEzMTQxNTE2MTcxODE5MjAyMTIyMjMyNDI1MjYyNzI4MjkzMDMxMzIzMzM0MzUzNjM3MzgzOTQwNDE0MjQzNDQ0NTQ2NDc0ODQ5NTA1MTUyNTM1NDU1NTY1NzU4NTk2MDYxNjI2MzY0NjU2NjY3Njg2OTcwNzE3MjczNzQ3NTc2Nzc3ODc5ODA4MTgyODM4NDg1ODY4Nzg4ODk5MDkxOTI5Mzk0OTU5Njk3OTg5OTcAEAAbAAAAVwIAAAUAAABSZWZDZWxsIGFscmVhZHkgYm9ycm93ZWQAQaCHwAALGAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAABZBG5hbWUACQhsaWIud2FzbQEGAQEDYWRkBRgBABVfX3diaW5kZ2VuX2V4dGVybnJlZnMHEgEAD19fc3RhY2tfcG9pbnRlcgkRAgAHLnJvZGF0YQEFLmRhdGEAcAlwcm9kdWNlcnMCCGxhbmd1YWdlAQRSdXN0AAxwcm9jZXNzZWQtYnkDBXJ1c3RjHTEuOTMuMCAoMjU0YjU5NjA3IDIwMjYtMDEtMTkpBndhbHJ1cwYwLjI0LjQMd2FzbS1iaW5kZ2VuBzAuMi4xMDgAlAEPdGFyZ2V0X2ZlYXR1cmVzCCsLYnVsay1tZW1vcnkrD2J1bGstbWVtb3J5LW9wdCsWY2FsbC1pbmRpcmVjdC1vdmVybG9uZysKbXVsdGl2YWx1ZSsPbXV0YWJsZS1nbG9iYWxzKxNub250cmFwcGluZy1mcHRvaW50Kw9yZWZlcmVuY2UtdHlwZXMrCHNpZ24tZXh0", l = async (A = {}, t) => {
+const d = "data:application/wasm;base64,AGFzbQEAAAABCgJgAABgAnx8AXwCMAEMLi9icnV2X2JnLmpzH19fd2JpbmRnZW5faW5pdF9leHRlcm5yZWZfdGFibGUAAAMCAQEEBQFvAIABBQMBABEGCQF/AUGAgMAACwc7BAZtZW1vcnkCAANhZGQAARVfX3diaW5kZ2VuX2V4dGVybnJlZnMBABBfX3diaW5kZ2VuX3N0YXJ0AAAKCQEHACAAIAGgCwvKBwIAQYCAwAALoAcgaW5kZXggb3V0IG9mIGJvdW5kczogdGhlIGxlbiBpcyDAEiBidXQgdGhlIGluZGV4IGlzIMAAbGlicmFyeS9jb3JlL3NyYy9mbXQvbnVtLnJzAC9ob21lL3dheW5ldmFuc29uLy5jYXJnby9yZWdpc3RyeS9zcmMvaW5kZXguY3JhdGVzLmlvLTE5NDljZjhjNmI1YjU1N2Yvd2FzbS1iaW5kZ2VuLTAuMi4xMDgvc3JjL2V4dGVybnJlZi5ycwBsaWJyYXJ5L2FsbG9jL3NyYy9yYXdfdmVjL21vZC5ycwAvcnVzdC9kZXBzL2RsbWFsbG9jLTAuMi4xMS9zcmMvZGxtYWxsb2MucnMAbGlicmFyeS9zdGQvc3JjL2FsbG9jLnJzABVtZW1vcnkgYWxsb2NhdGlvbiBvZiDADSBieXRlcyBmYWlsZWQAAFMAEABsAAAAfwAAABEAAABTABAAbAAAAIwAAAARAAAADJEbQUXNQ0p+ifIWqaSWEW1dy9YsUOtjeEGmV3Ebi7kMARAAGAAAAHABAAAJAAAAAwAAAAwAAAAEAAAABAAAAAUAAAAGAAAABwAAABAAAAAEAAAACAAAAAkAAAAKAAAACwAAAAAAAAAIAAAABAAAAAwAAAANAAAADgAAAA8AAAAAAAAACAAAAAQAAAAQAAAAYXNzZXJ0aW9uIGZhaWxlZDogcHNpemUgPj0gc2l6ZSArIG1pbl9vdmVyaGVhZAAA4QAQACoAAACxBAAACQAAAGFzc2VydGlvbiBmYWlsZWQ6IHBzaXplIDw9IHNpemUgKyBtYXhfb3ZlcmhlYWQAAOEAEAAqAAAAtwQAAA0AAAADAAAADAAAAAQAAAARAAAAY2FwYWNpdHkgb3ZlcmZsb3cAAADAABAAIAAAABwAAAAFAAAAMDAwMTAyMDMwNDA1MDYwNzA4MDkxMDExMTIxMzE0MTUxNjE3MTgxOTIwMjEyMjIzMjQyNTI2MjcyODI5MzAzMTMyMzMzNDM1MzYzNzM4Mzk0MDQxNDI0MzQ0NDU0NjQ3NDg0OTUwNTE1MjUzNTQ1NTU2NTc1ODU5NjA2MTYyNjM2NDY1NjY2NzY4Njk3MDcxNzI3Mzc0NzU3Njc3Nzg3OTgwODE4MjgzODQ4NTg2ODc4ODg5OTA5MTkyOTM5NDk1OTY5Nzk4OTk3ABAAGwAAAFcCAAAFAAAAUmVmQ2VsbCBhbHJlYWR5IGJvcnJvd2VkAEGgh8AACxgAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAWgRuYW1lAAoJYnJ1di53YXNtAQYBAQNhZGQFGAEAFV9fd2JpbmRnZW5fZXh0ZXJucmVmcwcSAQAPX19zdGFja19wb2ludGVyCRECAAcucm9kYXRhAQUuZGF0YQBwCXByb2R1Y2VycwIIbGFuZ3VhZ2UBBFJ1c3QADHByb2Nlc3NlZC1ieQMFcnVzdGMdMS45My4wICgyNTRiNTk2MDcgMjAyNi0wMS0xOSkGd2FscnVzBjAuMjQuNAx3YXNtLWJpbmRnZW4HMC4yLjEwOACUAQ90YXJnZXRfZmVhdHVyZXMIKwtidWxrLW1lbW9yeSsPYnVsay1tZW1vcnktb3B0KxZjYWxsLWluZGlyZWN0LW92ZXJsb25nKwptdWx0aXZhbHVlKw9tdXRhYmxlLWdsb2JhbHMrE25vbnRyYXBwaW5nLWZwdG9pbnQrD3JlZmVyZW5jZS10eXBlcysIc2lnbi1leHQ=", M = async (A = {}, e) => {
   let a;
-  if (t.startsWith("data:")) {
-    const e = t.replace(/^data:.*?base64,/, "");
+  if (e.startsWith("data:")) {
+    const t = e.replace(/^data:.*?base64,/, "");
     let n;
     if (typeof Buffer == "function" && typeof Buffer.from == "function")
-      n = Buffer.from(e, "base64");
+      n = Buffer.from(t, "base64");
     else if (typeof atob == "function") {
-      const s = atob(e);
+      const s = atob(t);
       n = new Uint8Array(s.length);
-      for (let c = 0; c < s.length; c++)
-        n[c] = s.charCodeAt(c);
+      for (let i = 0; i < s.length; i++)
+        n[i] = s.charCodeAt(i);
     } else
       throw new Error("Cannot decode base64-encoded data URL");
     a = await WebAssembly.instantiate(n, A);
   } else {
-    const e = await fetch(t), n = e.headers.get("Content-Type") || "";
+    const t = await fetch(e), n = t.headers.get("Content-Type") || "";
     if ("instantiateStreaming" in WebAssembly && n.startsWith("application/wasm"))
-      a = await WebAssembly.instantiateStreaming(e, A);
+      a = await WebAssembly.instantiateStreaming(t, A);
     else {
-      const s = await e.arrayBuffer();
+      const s = await t.arrayBuffer();
       a = await WebAssembly.instantiate(s, A);
     }
   }
   return a.instance.exports;
 };
-function g(A, t) {
-  return i.add(A, t);
+function m(A, e) {
+  return b.add(A, e);
 }
-function m() {
-  const A = i.__wbindgen_externrefs, t = A.grow(4);
-  A.set(0, void 0), A.set(t + 0, void 0), A.set(t + 1, null), A.set(t + 2, !0), A.set(t + 3, !1);
+function y() {
+  const A = b.__wbindgen_externrefs, e = A.grow(4);
+  A.set(0, void 0), A.set(e + 0, void 0), A.set(e + 1, null), A.set(e + 2, !0), A.set(e + 3, !1);
 }
-let i;
-function o(A) {
-  i = A;
+let b;
+function w(A) {
+  b = A;
 }
 URL = globalThis.URL;
-const b = await l({ "./lib_bg.js": { __wbindgen_init_externref_table: m } }, d), r = b.memory, w = b.add, W = b.__wbindgen_externrefs, M = b.__wbindgen_start, Z = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+const c = await M({ "./bruv_bg.js": { __wbindgen_init_externref_table: y } }, d), r = c.memory, o = c.add, W = c.__wbindgen_externrefs, l = c.__wbindgen_start, Z = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   __wbindgen_externrefs: W,
-  __wbindgen_start: M,
-  add: w,
+  __wbindgen_start: l,
+  add: o,
   memory: r
 }, Symbol.toStringTag, { value: "Module" }));
-o(Z);
-M();
+w(Z);
+l();
 export {
-  g as add
+  m as add
 };

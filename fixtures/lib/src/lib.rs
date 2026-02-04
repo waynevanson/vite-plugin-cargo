@@ -12,6 +12,6 @@ mod tests {
     #[test]
     fn it_works() {
         let result = add(2.0, 2.0);
-        assert_eq!(result, 4);
+        assert_eq!(result, 4.0);
     }
 }
