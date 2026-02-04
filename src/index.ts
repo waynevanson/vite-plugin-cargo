@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import pino from "pino";
 import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
 import { deriveLibraryArtifact as findLibraryArtifact } from "./artifacts";
 import { cargoBuild, cargoLocateProject, cargoMetadata } from "./cargo";
-import { debug } from "./debug";
 import {
 	createLibraryDir,
 	createLibraryHash,
@@ -15,9 +15,9 @@ import {
 } from "./library";
 import { findLibraryMetadata } from "./metadata";
 import {
-	type VitePluginCargoOptionsInternal as PluginOptions,
 	parsePluginOptions,
 	type VitePluginCargoOptions,
+	type VitePluginCargoOptionsInternal,
 } from "./plugin-options";
 import { isString } from "./utils";
 
@@ -29,24 +29,40 @@ export interface Library {
 export interface PluginContext {
 	isServe: boolean;
 	libraries: Map<string, Library>;
+	log: pino.Logger;
+}
+
+export interface PluginData {
+	options: VitePluginCargoOptionsInternal;
+	context: PluginContext;
+}
+
+function createPluginData(pluginOptions: VitePluginCargoOptions): PluginData {
+	const options = parsePluginOptions(pluginOptions);
+
+	const data = {
+		options,
+		context: {
+			isServe: false,
+			libraries: new Map<string, Library>(),
+			log: pino({ level: options.logLevel }),
+		},
+	};
+
+	return data;
 }
 
 export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
-	const pluginOptions = parsePluginOptions(pluginOptions_);
-
-	const context: PluginContext = {
-		isServe: false,
-		libraries: new Map<string, Library>(),
-	};
+	const plugin = createPluginData(pluginOptions_);
 
 	return {
 		name: "vite-plugin-cargo",
 		configResolved(config) {
-			context.isServe = config.command === "serve";
+			plugin.context.isServe = config.command === "serve";
 		},
 		async resolveId(source, importer) {
 			// check if this import came from one of our entrypoints
-			const outDir = context.libraries
+			const outDir = plugin.context.libraries
 				.values()
 				.find((library) => library.id === importer)?.outDir;
 
@@ -59,25 +75,22 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 		},
 		transform: {
 			filter: {
-				id: pluginOptions.pattern,
+				id: plugin.options.pattern,
 			},
-			// todo: throw when importing a non-entry point.
-			// todo: consider: way in the future we could enable users to import any rust file
-			// and we'll add overrides instead of relying on Cargo.toml for `lib` information.
 			async handler(_code, id) {
-				const project = cargoLocateProject(id);
+				const project = cargoLocateProject(id, plugin.context);
 				const libraryContextBase: LibraryContextBase = { id, project };
 
 				const hash = createLibraryHash(libraryContextBase);
 				const outDir = createLibraryDir(hash);
 
-				debug("library %s", { hash, id, outDir });
+				plugin.context.log.debug({ hash, id, outDir });
 
 				// keep track of libraries compiled
 				// for resolving `wasm-bingen` files to `outDir`.
-				context.libraries.set(hash, { id, outDir });
+				plugin.context.libraries.set(hash, { id, outDir });
 
-				const projectMetadata = cargoMetadata(libraryContextBase);
+				const projectMetadata = cargoMetadata(libraryContextBase, plugin);
 
 				// find the right library from our file
 				const libraryMetadata = findLibraryMetadata.call(
@@ -86,11 +99,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					libraryContextBase,
 				);
 
-				const artifacts = await cargoBuild(
-					libraryContextBase,
-					context.isServe,
-					pluginOptions.cargoBuildOverrides,
-				);
+				const artifacts = await cargoBuild(libraryContextBase, plugin);
 
 				const rustLibrary = await findLibraryArtifact.call(
 					this,
@@ -98,7 +107,10 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					libraryContextBase,
 				);
 
-				debug("watching-dependencies %s", rustLibrary.neighbours);
+				plugin.context.log.debug(
+					{ dependencies: rustLibrary.neighbours },
+					"watching-dependencies",
+				);
 
 				// Watch for files only
 				for (const neighbour of rustLibrary.neighbours) {
@@ -112,7 +124,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					wasm: rustLibrary.wasmFilename,
 				};
 
-				buildWasmBindgen(pluginOptions, context, libraryContextRustBuild);
+				buildWasmBindgen(plugin, libraryContextRustBuild);
 
 				const libraryContextWasmBuild: LibraryContextWasmBuild = {
 					...libraryContextRustBuild,
@@ -120,7 +132,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				};
 
 				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.
-				if (pluginOptions.typescript) {
+				if (plugin.options.typescript) {
 					await copyTypescriptDeclaration.call(this, libraryContextWasmBuild);
 				}
 
@@ -162,20 +174,19 @@ async function copyTypescriptDeclaration(
 // `.js` and `.wasm` files are created in outDir,
 // and added to dependency graph from imports in the `.js` entrypoint.
 export function buildWasmBindgen(
-	options: PluginOptions,
-	context: PluginContext,
+	data: PluginData,
 	library: LibraryContextRustBuild,
 ) {
 	const args = [
 		"--target=bundler",
-		options.typescript || `--no-typescript`,
-		options.browserless || `--browser`,
-		context.isServe && `--debug`,
+		data.options.typescript || `--no-typescript`,
+		data.options.browserless || `--browser`,
+		data.context.isServe && `--debug`,
 		`--out-dir=${library.outDir}`,
 		library.wasm,
 	].filter(isString);
 
-	debug("wasm-bindgen %s", args.join(" "));
+	data.context.log.debug({ args }, "wasm-bindgen");
 
 	execFileSync("wasm-bindgen", args);
 }

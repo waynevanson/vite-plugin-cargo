@@ -1,15 +1,15 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import * as v from "valibot";
-import { debug } from "./debug";
+import type { PluginContext, PluginData } from ".";
 import { MetadataSchema } from "./metadata";
 import type { MetadaSchemaOptions } from "./types";
 import { isString } from "./utils";
 
-export function cargoLocateProject(id: string) {
+export function cargoLocateProject(id: string, context: PluginContext) {
 	const args = ["locate-project", "--message-format=plain"];
 
-	debug("cargo %s", args.join(" "));
+	context.log.debug(args, "cargo-locate-project");
 
 	const project = execFileSync("cargo", args, {
 		stdio: ["ignore", "pipe", "ignore"],
@@ -17,30 +17,33 @@ export function cargoLocateProject(id: string) {
 		cwd: path.dirname(id),
 	}).trim();
 
-	debug("project %o", project);
+	context.log.debug({ project }, "cargo-project");
 
 	return project;
 }
 
-export function cargoMetadata(options: MetadaSchemaOptions) {
+export function cargoMetadata(options: MetadaSchemaOptions, data: PluginData) {
 	const args = ["metadata", "--no-deps", "--format-version=1"];
-	debug("cargo %s", args.join(" "));
+
+	data.context.log.debug({ args }, "cargo-metadata");
+
 	const metacontent = execFileSync("cargo", args, {
 		cwd: path.dirname(options.id),
 		encoding: "utf-8",
 	}).trim();
 
 	const json = JSON.parse(metacontent);
+	data.context.log.debug({ json }, "metadata-raw");
 
-	debug("metadata %s", JSON.stringify(json, null, 2));
+	const parsed = v.parse(MetadataSchema, json);
+	data.context.log.debug({ parsed }, "metadata-parsed");
 
-	return v.parse(MetadataSchema, json);
+	return parsed;
 }
 
 export async function cargoBuild(
 	options: MetadaSchemaOptions,
-	isServe: boolean,
-	overrides: undefined | ((args: Array<string>) => Array<string>),
+	data: PluginData,
 ) {
 	// create `.wasm` from `.rs`
 	let args = [
@@ -50,14 +53,16 @@ export async function cargoBuild(
 		"--message-format=json",
 		"--color=never",
 		"--quiet",
-		isServe || "--release",
+		data.context.isServe || "--release",
 	].filter(isString);
 
-	debug("cargo-raw-args %s", args.join(" "));
+	data.context.log.debug({ args }, "cargo-build:raw-args");
 
-	if (overrides) {
-		args = overrides(args);
-		debug("cargo-override-args %s", args.join(" "));
+	if (data.options.cargoBuildOverrides) {
+		args = data.options.cargoBuildOverrides(args);
+		data.context.log.debug({ args }, "cargo-build:overridden-args");
+	} else {
+		data.context.log.debug("cargo-build:no-overriden-args");
 	}
 
 	const ndjson = execFileSync("cargo", args, {
@@ -66,14 +71,14 @@ export async function cargoBuild(
 		stdio: ["ignore", "pipe", "ignore"],
 	});
 
-	debug("artifacts-ndjson %s", ndjson);
+	data.context.log.debug({ ndjson }, "artifacts-ndjson");
 
 	const json = ndjson
 		.trim()
 		.split("\n")
 		.map((json) => JSON.parse(json));
 
-	debug("artifacts %o", json);
+	data.context.log.debug({ json }, "artifacts");
 
 	// todo: validate json data
 	return json;

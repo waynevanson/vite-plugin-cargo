@@ -1,6 +1,16 @@
 import type { StringFilter } from "rollup";
 import * as v from "valibot";
 
+const logLevel = v.picklist([
+	"silent",
+	"fatal",
+	"error",
+	"warn",
+	"info",
+	"debug",
+	"trace",
+]);
+
 const enable = v.optional(v.boolean(), false);
 
 const FeaturesSchema = v.pipe(
@@ -33,6 +43,7 @@ const StringFilterSchema: v.GenericSchema<StringFilter> = v.union([
 const VitePluginCargoOptionsBaseSchema = v.pipe(
 	v.object({
 		pattern: StringFilterSchema,
+		logLevel: v.optional(logLevel, "silent"),
 		noTypescript: enable,
 		browserOnly: enable,
 		cargoBuildOverrides: v.optional(
@@ -48,6 +59,7 @@ const VitePluginCargoOptionsBaseSchema = v.pipe(
 		browserless: !base.browserOnly,
 		pattern: base.pattern,
 		cargoBuildOverrides: base.cargoBuildOverrides,
+		logLevel: base.logLevel,
 	})),
 );
 
