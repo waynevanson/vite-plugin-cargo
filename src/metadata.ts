@@ -22,7 +22,6 @@ export function findLibraryMetadata(
 	const TargetSchema = v.object({
 		name: v.string(),
 		src_path: v.literal(options.id),
-		kind: v.tuple([v.literal("cdylib")]),
 		crate_types: v.tuple([v.literal("cdylib")]),
 	});
 
