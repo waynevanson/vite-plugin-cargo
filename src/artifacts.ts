@@ -1,19 +1,38 @@
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
+import * as v from "valibot";
 import type { LibraryContextBase } from "./library";
+import { findOnlyOne } from "./utils";
+
+const createArtifactSchema = (options: LibraryContextBase) =>
+	v.object({
+		reason: v.literal("compiler-artifact"),
+		manifest_path: v.literal(options.project),
+		filenames: v.array(v.string()),
+		target: v.object({
+			name: v.string(),
+			src_path: v.literal(options.id),
+		}),
+	});
 
 export async function deriveLibraryArtifact(
 	this: TransformPluginContext,
-	artifacts: Array<any>,
+	artifacts: Array<unknown>,
 	options: LibraryContextBase,
 ) {
-	// todo: validation and error messages
-	const artifact = artifacts
-		.filter((a) => a?.reason === "compiler-artifact")
-		.filter((a) => a?.manifest_path === options.project)?.[0];
+	const artifactSchema = createArtifactSchema(options);
+
+	const artifact = findOnlyOne(artifacts, (artifact) =>
+		v.is(artifactSchema, artifact),
+	);
+
+	if (artifact === undefined) {
+		throw new Error(`Expected to find exactly 1 compiler-artifact`);
+	}
 
 	// todo: hold paths here
 	const libraryName = artifact.target.name;
+
 	const wasmFilename: string = artifact?.filenames?.[0];
 
 	const dependencyFilepath = path.resolve(
