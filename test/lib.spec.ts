@@ -15,7 +15,6 @@ describe("lib", () => {
 				plugins: [
 					cargo({
 						pattern: "**/src/lib.rs",
-						logLevel: "debug",
 						cargoBuildProfile: "jesus",
 					}),
 					wasm(),

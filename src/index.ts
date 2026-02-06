@@ -2,9 +2,9 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pino from "pino";
 import type { TransformPluginContext } from "rollup";
-import type { Plugin } from "vite";
+import type { BuildAppHook, Plugin } from "vite";
 import { deriveLibraryArtifact as findLibraryArtifact } from "./artifacts";
-import { cargoBuild } from "./cargo";
+import { cargoBuild } from "./build-library";
 import { findProjectFilePath } from "./find-project-file-path";
 import {
 	createLibraryDir,
@@ -103,17 +103,31 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					projectFilePath,
 				});
 
-				const artifacts = await cargoBuild({
+				// todo: as user config
+				const cargoBuildTarget = "wasm32-unknown-unknown";
+				const cargoBuildProfile =
+					pluginContext.cargoBuildProfile ??
+					(pluginContext.isServe ? "release" : "dev");
+
+				const cargoBuildTargetDir = projectMetadata.target_directory;
+
+				cargoBuild({
+					cargoBuildTarget,
 					cargoBuildOverrides: pluginContext.cargoBuildOverrides,
+					cargoBuildProfile,
 					isServe: pluginContext.isServe,
 					log: pluginContext.log,
 					projectFilePath,
 					profile: pluginContext.cargoBuildProfile,
 				});
 
-				const rustLibrary = await findLibraryArtifact.call(this, artifacts, {
+				const rustLibrary = await findLibraryArtifact.call(this, {
+					cargoBuildTarget,
+					cargoBuildProfile,
+					libraryMetadata,
 					libraryFilePath,
 					projectFilePath,
+					cargoBuildTargetDir,
 				});
 
 				pluginContext.log.debug(
@@ -132,41 +146,45 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					libraryFilePath,
 				});
 
-				const outDir = createLibraryDir(hash);
+				const wasmBindgenOutDir = createLibraryDir(hash);
 
-				pluginContext.log.debug({ hash, libraryFilePath, outDir });
+				pluginContext.log.debug({
+					hash,
+					libraryFilePath,
+					outDir: wasmBindgenOutDir,
+				});
 
 				// keep track of libraries compiled
 				// for resolving `wasm-bingen` files to `outDir`.
 				pluginContext.libraries.set(hash, {
 					libraryFilePath,
-					outDir,
+					outDir: wasmBindgenOutDir,
 				});
 
-				const libraryContextRustBuild: LibraryContextRustBuild = {
-					id: libraryFilePath,
-					outDir,
-					project: projectFilePath,
-					wasm: rustLibrary.wasmFilename,
-				};
+				const libraryTargetName = libraryMetadata.target.name;
 
-				buildWasmBindgen(pluginContext, libraryContextRustBuild);
-
-				const libraryContextWasmBuild: LibraryContextWasmBuild = {
-					...libraryContextRustBuild,
-					name: libraryMetadata.name,
-				};
+				buildWasmBindgen({
+					browserless: pluginContext.browserless,
+					log: pluginContext.log,
+					typescript: pluginContext.typescript,
+					wasmBindgenOutDir,
+					wasmFilePath: rustLibrary.wasmFilename,
+				});
 
 				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.
 				if (pluginContext.typescript) {
-					await copyTypescriptDeclaration.call(this, libraryContextWasmBuild);
+					await copyTypescriptDeclaration.call(this, {
+						wasmBindgenOutDir,
+						libraryTargetName,
+						libraryFilePath,
+					});
 				}
 
 				// read `.js` entry point for code resolution
-				const code = await readJavascriptEntryPoint.call(
-					this,
-					libraryContextWasmBuild,
-				);
+				const code = await readJavascriptEntryPoint.call(this, {
+					libraryTargetName,
+					wasmBindgenOutDir,
+				});
 
 				return { code };
 			},
@@ -176,9 +194,12 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 async function readJavascriptEntryPoint(
 	this: TransformPluginContext,
-	library: LibraryContextWasmBuild,
+	library: { wasmBindgenOutDir: string; libraryTargetName: string },
 ) {
-	const entrypoint = path.resolve(library.outDir, `${library.name}.js`);
+	const entrypoint = path.resolve(
+		library.wasmBindgenOutDir,
+		`${library.libraryTargetName}.js`,
+	);
 	const content = await this.fs.readFile(entrypoint, {
 		encoding: "utf8",
 	});
@@ -189,10 +210,18 @@ async function readJavascriptEntryPoint(
 // todo: add banner to this file so users don't try to use it.
 async function copyTypescriptDeclaration(
 	this: TransformPluginContext,
-	library: LibraryContextWasmBuild,
+	library: {
+		wasmBindgenOutDir: string;
+		libraryTargetName: string;
+		libraryFilePath: string;
+	},
 ) {
-	const source = path.join(library.outDir, `${library.name}.d.ts`);
-	const target = `${library.id}.d.ts`;
+	const source = path.join(
+		library.wasmBindgenOutDir,
+		`${library.libraryTargetName}.d.ts`,
+	);
+
+	const target = `${library.libraryFilePath}.d.ts`;
 	await this.fs.copyFile(source, target);
 	this.addWatchFile(target);
 }
@@ -201,20 +230,22 @@ async function copyTypescriptDeclaration(
 //
 // `.js` and `.wasm` files are created in outDir,
 // and added to dependency graph from imports in the `.js` entrypoint.
-export function buildWasmBindgen(
-	data: PluginContext,
-	library: LibraryContextRustBuild,
-) {
+export function buildWasmBindgen(input: {
+	typescript: boolean;
+	browserless: boolean;
+	wasmBindgenOutDir: string;
+	wasmFilePath: string;
+	log: pino.Logger;
+}) {
 	const args = [
 		"--target=bundler",
-		data.typescript || `--no-typescript`,
-		data.browserless || `--browser`,
-		data.isServe && `--debug`,
-		`--out-dir=${library.outDir}`,
-		library.wasm,
+		input.typescript || `--no-typescript`,
+		input.browserless || `--browser`,
+		`--out-dir=${input.wasmBindgenOutDir}`,
+		input.wasmFilePath,
 	].filter(isString);
 
-	data.log.debug({ args }, "wasm-bindgen");
+	input.log.debug({ args }, "wasm-bindgen");
 
 	execFileSync("wasm-bindgen", args);
 }

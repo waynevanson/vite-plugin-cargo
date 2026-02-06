@@ -1,59 +1,28 @@
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
-import * as v from "valibot";
-import type { LibraryContextBase } from "./library";
-import { findOnlyOne } from "./utils";
-
-export const CompilerArtifact = v.object({
-	reason: v.literal("compiler-artifact"),
-	manifest_path: v.string(),
-	filenames: v.array(v.string()),
-	target: v.object({
-		name: v.string(),
-		src_path: v.string(),
-	}),
-});
-
-export const Artifacts = v.pipe(
-	v.array(v.unknown()),
-	v.transform((array) => array.filter((item) => v.is(CompilerArtifact, item))),
-);
-
-const createArtifactSchema = (options: {
-	libraryFilePath: string;
-	projectFilePath: string;
-}) =>
-	v.object({
-		// todo: do we really need to verify this?
-		// I mean the library will always be our project.
-		// I guess it doesn't hurt.
-		manifest_path: v.literal(options.projectFilePath),
-		filenames: v.array(v.string()),
-		target: v.object({
-			name: v.string(),
-			src_path: v.literal(options.libraryFilePath),
-		}),
-	});
+import type { findLibraryMetadata } from "./metadata";
 
 export async function deriveLibraryArtifact(
 	this: TransformPluginContext,
-	artifacts: v.InferOutput<typeof Artifacts>,
-	options: { libraryFilePath: string; projectFilePath: string },
+	options: {
+		libraryFilePath: string;
+		projectFilePath: string;
+		libraryMetadata: ReturnType<typeof findLibraryMetadata>;
+		cargoBuildTarget: string;
+		cargoBuildProfile: string;
+		cargoBuildTargetDir: string;
+	},
 ) {
-	const artifactSchema = createArtifactSchema(options);
-
-	const artifact = findOnlyOne(artifacts, (artifact) =>
-		v.is(artifactSchema, artifact),
-	);
-
-	if (artifact === undefined) {
-		throw new Error(`Expected to find exactly 1 compiler-artifact`);
-	}
-
 	// todo: hold paths here
-	const libraryName = artifact.target.name;
+	const libraryName = options.libraryMetadata.target.name;
 
-	const wasmFilename: string = artifact?.filenames?.[0];
+	// get workspace target dir from metadata
+	const wasmFilename: string = path.resolve(
+		options.cargoBuildTargetDir,
+		options.cargoBuildTarget,
+		options.cargoBuildProfile,
+		`${options.libraryMetadata.target.name}.wasm`,
+	);
 
 	const dependencyFilepath = path.resolve(
 		wasmFilename,
