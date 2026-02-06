@@ -97,8 +97,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				);
 
 				// find the right library from our file
-				const libraryMetadata = findLibraryMetadata.call(
-					this,
+				const libraryMetadata = findLibraryMetadata(
 					projectMetadata,
 					libraryContextBase,
 				);

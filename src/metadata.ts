@@ -1,10 +1,9 @@
-import type { TransformPluginContext } from "rollup";
 import * as v from "valibot";
 import type { MetadaSchemaOptions } from "./types";
 import { findOnlyOne } from "./utils";
 
+// todo: use the target found here to verify we have the correct target
 export function findLibraryMetadata(
-	this: TransformPluginContext,
 	metadata: v.InferOutput<typeof MetadataSchema>,
 	options: MetadaSchemaOptions,
 ) {
