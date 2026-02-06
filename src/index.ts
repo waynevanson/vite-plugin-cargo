@@ -2,15 +2,13 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import pino from "pino";
 import type { TransformPluginContext } from "rollup";
-import type { BuildAppHook, Plugin } from "vite";
-import { deriveLibraryArtifact as findLibraryArtifact } from "./artifacts";
-import { cargoBuild } from "./build-library";
+import type { Plugin } from "vite";
+import { cargoBuild } from "./cargo-build";
+import { findLibraryDependencies } from "./find-library-dependencies";
 import { findProjectFilePath } from "./find-project-file-path";
 import {
 	createLibraryDir,
 	createLibraryHash,
-	type LibraryContextRustBuild,
-	type LibraryContextWasmBuild,
 	type LibraryDir,
 } from "./library";
 import { findLibraryMetadata, findProjectMetadata } from "./metadata";
@@ -61,6 +59,12 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 		configResolved(config) {
 			pluginContext.isServe = config.command === "serve";
 		},
+		watchChange: {
+			handler(id, change) {
+				// todo: instead of watching just dependencies,
+				// we need to watch all files and trigger rebuild when the dependencies change.
+			},
+		},
 		async resolveId(source, importer) {
 			// todo: wasm-bindgen could create many files which won't use the entrypoint. check if importer is in the outDir
 			// check if this import came from one of our entrypoints
@@ -79,11 +83,6 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			filter: {
 				id: pluginContext.pattern,
 			},
-			// 3 Steps
-			// 1. Validate we're in a valid rust library based on the libraryFilePath
-			// 2. `cargo build`
-			// 3. `wasm-bindgen`
-			// 4. Link it all together
 			async handler(_code, libraryFilePath) {
 				const projectFilePath = findProjectFilePath(
 					libraryFilePath,
@@ -110,7 +109,16 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					(pluginContext.isServe ? "release" : "dev");
 
 				const cargoBuildTargetDir = projectMetadata.target_directory;
+				// todo: hold paths here
+				const libraryTargetName = libraryMetadata.target.name;
 
+				const libraryBuildDir = path.resolve(
+					cargoBuildTargetDir,
+					cargoBuildTarget,
+					cargoBuildProfile,
+				);
+
+				// get workspace target dir from metadata
 				cargoBuild({
 					cargoBuildTarget,
 					cargoBuildOverrides: pluginContext.cargoBuildOverrides,
@@ -121,26 +129,39 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					profile: pluginContext.cargoBuildProfile,
 				});
 
-				const rustLibrary = await findLibraryArtifact.call(this, {
-					cargoBuildTarget,
-					cargoBuildProfile,
-					libraryMetadata,
-					libraryFilePath,
-					projectFilePath,
-					cargoBuildTargetDir,
-				});
+				const wasmFilePath: string = path.resolve(
+					libraryBuildDir,
+					`${libraryTargetName}.wasm`,
+				);
+
+				const libraryDepsDir = path.resolve(libraryBuildDir, "deps");
+
+				const libraryFileDependencies = await findLibraryDependencies.call(
+					this,
+					{
+						cargoBuildTarget,
+						cargoBuildProfile,
+						libraryMetadata,
+						libraryFilePath,
+						projectFilePath,
+						cargoBuildTargetDir,
+						libraryDepsDir,
+						libraryTargetName,
+						wasmFilePath,
+					},
+				);
 
 				pluginContext.log.debug(
-					{ dependencies: rustLibrary.neighbours },
+					{ libraryFileDependencies },
 					"watching-dependencies",
 				);
 
 				// Watch for files only
-				for (const neighbour of rustLibrary.neighbours) {
-					this.addWatchFile(neighbour);
+				for (const libraryDependencies of libraryFileDependencies) {
+					this.addWatchFile(libraryDependencies);
 				}
 
-				// todo: use HashSet instead of Map
+				// todo: use node-object-hash instead of DIY
 				const hash = createLibraryHash({
 					projectFilePath,
 					libraryFilePath,
@@ -161,14 +182,12 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					outDir: wasmBindgenOutDir,
 				});
 
-				const libraryTargetName = libraryMetadata.target.name;
-
 				buildWasmBindgen({
 					browserless: pluginContext.browserless,
 					log: pluginContext.log,
 					typescript: pluginContext.typescript,
 					wasmBindgenOutDir,
-					wasmFilePath: rustLibrary.wasmFilename,
+					wasmFilePath,
 				});
 
 				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.

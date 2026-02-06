@@ -2,7 +2,9 @@ import path from "node:path";
 import type { TransformPluginContext } from "rollup";
 import type { findLibraryMetadata } from "./metadata";
 
-export async function deriveLibraryArtifact(
+// todo: instead of watching just dependencies,
+// we need to watch all files and trigger rebuild when the dependencies change.
+export async function findLibraryDependencies(
 	this: TransformPluginContext,
 	options: {
 		libraryFilePath: string;
@@ -11,40 +13,30 @@ export async function deriveLibraryArtifact(
 		cargoBuildTarget: string;
 		cargoBuildProfile: string;
 		cargoBuildTargetDir: string;
+		libraryDepsDir: string;
+		libraryTargetName: string;
+		wasmFilePath: string;
 	},
 ) {
-	// todo: hold paths here
-	const libraryName = options.libraryMetadata.target.name;
-
-	// get workspace target dir from metadata
-	const wasmFilename: string = path.resolve(
-		options.cargoBuildTargetDir,
-		options.cargoBuildTarget,
-		options.cargoBuildProfile,
-		`${options.libraryMetadata.target.name}.wasm`,
+	const libraryDepsFilePath = path.resolve(
+		options.libraryDepsDir,
+		`${options.libraryTargetName}.d`,
 	);
 
-	const dependencyFilepath = path.resolve(
-		wasmFilename,
-		"../deps",
-		`${libraryName}.d`,
-	);
-
-	const dependencies = await this.fs.readFile(dependencyFilepath, {
+	const dependencies = await this.fs.readFile(libraryDepsFilePath, {
 		encoding: "utf8",
 	});
 
 	const graph = createGraphFromDependencies(dependencies);
 
 	const neighboursEntry = path.resolve(
-		wasmFilename,
-		"../deps",
-		`${libraryName}.wasm`,
+		options.libraryDepsDir,
+		`${options.libraryTargetName}.wasm`,
 	);
 
 	const neighbours = findAllDescendants(neighboursEntry, graph);
 
-	return { wasmFilename, neighbours };
+	return neighbours;
 }
 
 export function createGraphFromDependencies(contents: string) {
