@@ -6,11 +6,8 @@ import type { Plugin } from "vite";
 import { cargoBuild } from "./cargo-build";
 import { findLibraryDependencies } from "./find-library-dependencies";
 import { findProjectFilePath } from "./find-project-file-path";
-import {
-	createLibraryDir,
-	createLibraryHash,
-	type LibraryDir,
-} from "./library";
+import { HashSet } from "./hash-set";
+import { createLibraryDir } from "./library";
 import { findLibraryMetadata, findProjectMetadata } from "./metadata";
 import {
 	parsePluginOptions,
@@ -20,14 +17,16 @@ import {
 import { isString } from "./utils";
 
 export interface Library {
+	projectFilePath: string;
 	libraryFilePath: string;
-	outDir: LibraryDir;
+	cargoBuildTarget: string;
+	cargoBuildProfile: string;
 }
 
 export interface PluginContext
 	extends Omit<VitePluginCargoOptionsInternal, "logLevel"> {
 	isServe: boolean;
-	libraries: Map<string, Library>;
+	libraries: HashSet<Library>;
 	log: pino.Logger;
 }
 
@@ -43,7 +42,7 @@ function createPluginContext(
 
 	const data = {
 		...options,
-		libraries: new Map<string, Library>(),
+		libraries: new HashSet<Library>(),
 		log,
 		isServe: false,
 	};
@@ -68,16 +67,16 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 		async resolveId(source, importer) {
 			// todo: wasm-bindgen could create many files which won't use the entrypoint. check if importer is in the outDir
 			// check if this import came from one of our entrypoints
-			const outDir = pluginContext.libraries
-				.values()
-				.find((library) => library.libraryFilePath === importer)?.outDir;
+			const hash = pluginContext.libraries
+				.entries()
+				.find(([_hash, library]) => library.libraryFilePath === importer)?.[0];
 
-			if (outDir === undefined) {
+			if (hash === undefined) {
 				return null;
 			}
 
 			// ensure source is relative to wasm_bindgen output dir
-			return path.resolve(outDir, source);
+			return path.resolve(createLibraryDir(hash), source);
 		},
 		transform: {
 			filter: {
@@ -161,23 +160,19 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					this.addWatchFile(libraryDependencies);
 				}
 
-				// todo: use node-object-hash instead of DIY
-				const hash = createLibraryHash({
+				// keep track of libraries compiled
+				// for resolving `wasm-bingen` files to `outDir`.
+				const hash = pluginContext.libraries.add({
 					projectFilePath,
 					libraryFilePath,
+					cargoBuildTarget,
+					cargoBuildProfile,
 				});
 
 				const wasmBindgenOutDir = createLibraryDir(hash);
 
 				pluginContext.log.debug({
 					hash,
-					libraryFilePath,
-					outDir: wasmBindgenOutDir,
-				});
-
-				// keep track of libraries compiled
-				// for resolving `wasm-bingen` files to `outDir`.
-				pluginContext.libraries.set(hash, {
 					libraryFilePath,
 					outDir: wasmBindgenOutDir,
 				});

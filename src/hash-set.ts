@@ -1,14 +1,16 @@
 import { type Hasher, type HasherOptions, hasher } from "node-object-hash";
 
+// might not be what I need for my use case.
+// inside it needs to take the outdir?
 export class HashSet<Value> implements Iterable<Value> {
 	#hasher: Hasher;
 	#map: Map<string, Value>;
 
-	constructor(values: Iterable<Value>, hasherOptions?: HasherOptions) {
+	constructor(values?: Iterable<Value>, hasherOptions?: HasherOptions) {
 		this.#hasher = hasher(hasherOptions);
 
 		const entries = Array.from(
-			values,
+			values ?? [],
 			(value) => [this.#hasher.hash(value), value] as const,
 		);
 
@@ -23,10 +25,10 @@ export class HashSet<Value> implements Iterable<Value> {
 		return this.#map.has(this.hash(value));
 	}
 
-	add(value: Value): this {
+	add(value: Value) {
 		const hash = this.hash(value);
 		this.#map.set(hash, value);
-		return this;
+		return hash;
 	}
 
 	delete(value: Value) {
