@@ -12,7 +12,14 @@ describe("lib", () => {
 			build({
 				root: FIXTURE,
 				logLevel: "silent",
-				plugins: [cargo({ pattern: "**/src/lib.rs" }), wasm()],
+				plugins: [
+					cargo({
+						pattern: "**/src/lib.rs",
+						logLevel: "debug",
+						cargoBuildProfile: "jesus",
+					}),
+					wasm(),
+				],
 				build: {
 					lib: {
 						entry: "./src/lib.rs",

@@ -40,19 +40,26 @@ const StringFilterSchema: v.GenericSchema<StringFilter> = v.union([
 	}),
 ]);
 
+const CargoBuildOverridesSchema = v.optional(
+	v.pipe(
+		v.function(),
+		v.args(v.strictTuple([v.array(v.string())])),
+		v.returns(v.array(v.string())),
+	),
+);
+
+export type CargoBuildOverrides = v.InferOutput<
+	typeof CargoBuildOverridesSchema
+>;
+
 const VitePluginCargoOptionsBaseSchema = v.pipe(
 	v.object({
 		pattern: StringFilterSchema,
 		logLevel: v.optional(logLevel, "silent"),
 		noTypescript: enable,
 		browserOnly: enable,
-		cargoBuildOverrides: v.optional(
-			v.pipe(
-				v.function(),
-				v.args(v.strictTuple([v.array(v.string())])),
-				v.returns(v.array(v.string())),
-			),
-		),
+		cargoBuildOverrides: CargoBuildOverridesSchema,
+		cargoBuildProfile: v.optional(v.string()),
 	}),
 	v.transform((base) => ({
 		typescript: !base.noTypescript,
@@ -60,6 +67,7 @@ const VitePluginCargoOptionsBaseSchema = v.pipe(
 		pattern: base.pattern,
 		cargoBuildOverrides: base.cargoBuildOverrides,
 		logLevel: base.logLevel,
+		cargoBuildProfile: base.cargoBuildProfile,
 	})),
 );
 

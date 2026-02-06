@@ -1,26 +1,50 @@
+import { execFileSync } from "node:child_process";
+import type pino from "pino";
 import * as v from "valibot";
-import type { MetadaSchemaOptions } from "./types";
 import { findOnlyOne } from "./utils";
+
+export function findProjectMetadata(projectFilename: string, log: pino.Logger) {
+	const args = [
+		"metadata",
+		"--no-deps",
+		"--format-version=1",
+		`--manifest-path=${projectFilename}`,
+	];
+
+	log.debug({ args }, "cargo-metadata");
+
+	const metacontent = execFileSync("cargo", args, {
+		encoding: "utf-8",
+	}).trim();
+
+	const json = JSON.parse(metacontent);
+	log.debug({ json }, "metadata-raw");
+
+	const parsed = v.parse(MetadataSchema, json);
+	log.debug({ parsed }, "metadata-parsed");
+
+	return parsed;
+}
 
 // todo: use the target found here to verify we have the correct target
 export function findLibraryMetadata(
 	metadata: v.InferOutput<typeof MetadataSchema>,
-	options: MetadaSchemaOptions,
+	options: { libraryFilePath: string; projectFilePath: string },
 ) {
 	const package_ = findOnlyOne(
 		metadata.packages,
-		(a) => a.manifest_path === options.project,
+		(a) => a.manifest_path === options.projectFilePath,
 	);
 
 	if (package_ === undefined) {
 		throw new Error(
-			`Expected exactly 1 package to have the manifest_path of "${options.project}"`,
+			`Expected exactly 1 package to have the manifest_path of "${options.projectFilePath}"`,
 		);
 	}
 
 	const TargetSchema = v.object({
 		name: v.string(),
-		src_path: v.literal(options.id),
+		src_path: v.literal(options.libraryFilePath),
 		crate_types: v.tuple([v.literal("cdylib")]),
 	});
 
@@ -31,8 +55,8 @@ export function findLibraryMetadata(
 	if (target === undefined) {
 		throw new Error(
 			[
-				`Expected exactly 1 target to match the src_path of "${options.id}" and be a "cdylib" target`,
-				`Maybe the following is not an entry point "${options.id}"?`,
+				`Expected exactly 1 target to match the src_path of "${options.libraryFilePath}" and be a "cdylib" target`,
+				`Maybe the following is not an entry point "${options.libraryFilePath}"?`,
 			].join("\n"),
 		);
 	}

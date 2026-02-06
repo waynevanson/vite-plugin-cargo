@@ -1,63 +1,28 @@
 import { execFileSync } from "node:child_process";
-import path from "node:path";
+import type pino from "pino";
 import * as v from "valibot";
-import type { PluginContext } from ".";
 import { Artifacts } from "./artifacts";
-import { MetadataSchema } from "./metadata";
-import type { MetadaSchemaOptions } from "./types";
+import type { CargoBuildOverrides } from "./plugin-options";
 import { isString } from "./utils";
 
-export function cargoLocateProject(id: string, context: PluginContext) {
-	const args = ["locate-project", "--message-format=plain"];
-
-	context.log.debug(args, "cargo-locate-project");
-
-	const project = execFileSync("cargo", args, {
-		stdio: ["ignore", "pipe", "ignore"],
-		encoding: "utf-8",
-		cwd: path.dirname(id),
-	}).trim();
-
-	context.log.debug({ project }, "cargo-project");
-
-	return project;
-}
-
-export function cargoMetadata(
-	options: MetadaSchemaOptions,
-	data: PluginContext,
-) {
-	const args = ["metadata", "--no-deps", "--format-version=1"];
-
-	data.log.debug({ args }, "cargo-metadata");
-
-	const metacontent = execFileSync("cargo", args, {
-		cwd: path.dirname(options.id),
-		encoding: "utf-8",
-	}).trim();
-
-	const json = JSON.parse(metacontent);
-	data.log.debug({ json }, "metadata-raw");
-
-	const parsed = v.parse(MetadataSchema, json);
-	data.log.debug({ parsed }, "metadata-parsed");
-
-	return parsed;
-}
-
-export async function cargoBuild(
-	options: MetadaSchemaOptions,
-	context: PluginContext,
-) {
+export async function cargoBuild(context: {
+	cargoBuildOverrides: CargoBuildOverrides;
+	projectFilePath: string;
+	log: pino.Logger;
+	isServe: boolean;
+	profile: undefined | string;
+}) {
+	const profile = (context.profile ?? context.isServe) ? "release" : "dev";
 	// create `.wasm` from `.rs`
 	let args = [
 		"build",
 		"--lib",
 		"--target=wasm32-unknown-unknown",
 		"--message-format=json",
+		`--manifest-path=${context.projectFilePath}`,
 		"--color=never",
 		"--quiet",
-		context.isServe || "--release",
+		`--profile=${profile}`,
 	].filter(isString);
 
 	context.log.debug({ args }, "cargo-build:raw-args");
@@ -70,7 +35,6 @@ export async function cargoBuild(
 	}
 
 	const ndjson = execFileSync("cargo", args, {
-		cwd: path.dirname(options.id),
 		encoding: "utf-8",
 		stdio: ["ignore", "pipe", "ignore"],
 	});

@@ -19,20 +19,26 @@ export const Artifacts = v.pipe(
 	v.transform((array) => array.filter((item) => v.is(CompilerArtifact, item))),
 );
 
-const createArtifactSchema = (options: LibraryContextBase) =>
+const createArtifactSchema = (options: {
+	libraryFilePath: string;
+	projectFilePath: string;
+}) =>
 	v.object({
-		manifest_path: v.literal(options.project),
+		// todo: do we really need to verify this?
+		// I mean the library will always be our project.
+		// I guess it doesn't hurt.
+		manifest_path: v.literal(options.projectFilePath),
 		filenames: v.array(v.string()),
 		target: v.object({
 			name: v.string(),
-			src_path: v.literal(options.id),
+			src_path: v.literal(options.libraryFilePath),
 		}),
 	});
 
 export async function deriveLibraryArtifact(
 	this: TransformPluginContext,
 	artifacts: v.InferOutput<typeof Artifacts>,
-	options: LibraryContextBase,
+	options: { libraryFilePath: string; projectFilePath: string },
 ) {
 	const artifactSchema = createArtifactSchema(options);
 

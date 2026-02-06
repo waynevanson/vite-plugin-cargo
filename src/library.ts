@@ -18,10 +18,13 @@ export type LibraryContextWasmBuild = LibraryContextRustBuild & {
 
 export type Hash = string;
 
-export function createLibraryHash(library: LibraryContextBase): Hash {
+export function createLibraryHash(library: {
+	libraryFilePath: string;
+	projectFilePath: string;
+}): Hash {
 	return crypto
 		.createHash("sha256")
-		.update(`${library.project}:${library.id}`)
+		.update(`${library.projectFilePath}:${library.libraryFilePath}`)
 		.digest("hex") as Hash;
 }
 

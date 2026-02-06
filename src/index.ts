@@ -4,16 +4,16 @@ import pino from "pino";
 import type { TransformPluginContext } from "rollup";
 import type { Plugin } from "vite";
 import { deriveLibraryArtifact as findLibraryArtifact } from "./artifacts";
-import { cargoBuild, cargoLocateProject, cargoMetadata } from "./cargo";
+import { cargoBuild } from "./cargo";
+import { findProjectFilePath } from "./find-project-file-path";
 import {
 	createLibraryDir,
 	createLibraryHash,
-	type LibraryContextBase,
 	type LibraryContextRustBuild,
 	type LibraryContextWasmBuild,
 	type LibraryDir,
 } from "./library";
-import { findLibraryMetadata } from "./metadata";
+import { findLibraryMetadata, findProjectMetadata } from "./metadata";
 import {
 	parsePluginOptions,
 	type VitePluginCargoOptions,
@@ -22,7 +22,7 @@ import {
 import { isString } from "./utils";
 
 export interface Library {
-	id: string;
+	libraryFilePath: string;
 	outDir: LibraryDir;
 }
 
@@ -62,10 +62,11 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			pluginContext.isServe = config.command === "serve";
 		},
 		async resolveId(source, importer) {
+			// todo: wasm-bindgen could create many files which won't use the entrypoint. check if importer is in the outDir
 			// check if this import came from one of our entrypoints
 			const outDir = pluginContext.libraries
 				.values()
-				.find((library) => library.id === importer)?.outDir;
+				.find((library) => library.libraryFilePath === importer)?.outDir;
 
 			if (outDir === undefined) {
 				return null;
@@ -78,37 +79,42 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			filter: {
 				id: pluginContext.pattern,
 			},
-			async handler(_code, id) {
-				const project = cargoLocateProject(id, pluginContext);
-				const libraryContextBase: LibraryContextBase = { id, project };
+			// 3 Steps
+			// 1. Validate we're in a valid rust library based on the libraryFilePath
+			// 2. `cargo build`
+			// 3. `wasm-bindgen`
+			// 4. Link it all together
+			async handler(_code, libraryFilePath) {
+				const projectFilePath = findProjectFilePath(
+					libraryFilePath,
+					pluginContext.log,
+				);
 
-				const hash = createLibraryHash(libraryContextBase);
-				const outDir = createLibraryDir(hash);
-
-				pluginContext.log.debug({ hash, id, outDir });
-
-				// keep track of libraries compiled
-				// for resolving `wasm-bingen` files to `outDir`.
-				pluginContext.libraries.set(hash, { id, outDir });
-
-				const projectMetadata = cargoMetadata(
-					libraryContextBase,
-					pluginContext,
+				const projectMetadata = findProjectMetadata(
+					projectFilePath,
+					pluginContext.log,
 				);
 
 				// find the right library from our file
-				const libraryMetadata = findLibraryMetadata(
-					projectMetadata,
-					libraryContextBase,
-				);
+				// todo: don't use cargo build to find where deps should be
+				// metadata should have enough in
+				const libraryMetadata = findLibraryMetadata(projectMetadata, {
+					libraryFilePath,
+					projectFilePath,
+				});
 
-				const artifacts = await cargoBuild(libraryContextBase, pluginContext);
+				const artifacts = await cargoBuild({
+					cargoBuildOverrides: pluginContext.cargoBuildOverrides,
+					isServe: pluginContext.isServe,
+					log: pluginContext.log,
+					projectFilePath,
+					profile: pluginContext.cargoBuildProfile,
+				});
 
-				const rustLibrary = await findLibraryArtifact.call(
-					this,
-					artifacts,
-					libraryContextBase,
-				);
+				const rustLibrary = await findLibraryArtifact.call(this, artifacts, {
+					libraryFilePath,
+					projectFilePath,
+				});
 
 				pluginContext.log.debug(
 					{ dependencies: rustLibrary.neighbours },
@@ -120,10 +126,27 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					this.addWatchFile(neighbour);
 				}
 
-				const libraryContextRustBuild: LibraryContextRustBuild = {
-					id,
+				// todo: use HashSet instead of Map
+				const hash = createLibraryHash({
+					projectFilePath,
+					libraryFilePath,
+				});
+
+				const outDir = createLibraryDir(hash);
+
+				pluginContext.log.debug({ hash, libraryFilePath, outDir });
+
+				// keep track of libraries compiled
+				// for resolving `wasm-bingen` files to `outDir`.
+				pluginContext.libraries.set(hash, {
+					libraryFilePath,
 					outDir,
-					project,
+				});
+
+				const libraryContextRustBuild: LibraryContextRustBuild = {
+					id: libraryFilePath,
+					outDir,
+					project: projectFilePath,
 					wasm: rustLibrary.wasmFilename,
 				};
 
@@ -163,6 +186,7 @@ async function readJavascriptEntryPoint(
 	return content;
 }
 
+// todo: add banner to this file so users don't try to use it.
 async function copyTypescriptDeclaration(
 	this: TransformPluginContext,
 	library: LibraryContextWasmBuild,
@@ -170,6 +194,7 @@ async function copyTypescriptDeclaration(
 	const source = path.join(library.outDir, `${library.name}.d.ts`);
 	const target = `${library.id}.d.ts`;
 	await this.fs.copyFile(source, target);
+	this.addWatchFile(target);
 }
 
 // create `.js` from `.wasm`

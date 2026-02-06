@@ -1,3 +1,7 @@
 [workspace]
 members = ["fixtures/*"]
 resolver = "3"
+
+[profile.jesus]
+inherits = "dev"
+strip = "debuginfo"
