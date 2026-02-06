@@ -4,9 +4,23 @@ import * as v from "valibot";
 import type { LibraryContextBase } from "./library";
 import { findOnlyOne } from "./utils";
 
+export const CompilerArtifact = v.object({
+	reason: v.literal("compiler-artifact"),
+	manifest_path: v.string(),
+	filenames: v.array(v.string()),
+	target: v.object({
+		name: v.string(),
+		src_path: v.string(),
+	}),
+});
+
+export const Artifacts = v.pipe(
+	v.array(v.unknown()),
+	v.transform((array) => array.filter((item) => v.is(CompilerArtifact, item))),
+);
+
 const createArtifactSchema = (options: LibraryContextBase) =>
 	v.object({
-		reason: v.literal("compiler-artifact"),
 		manifest_path: v.literal(options.project),
 		filenames: v.array(v.string()),
 		target: v.object({
@@ -17,7 +31,7 @@ const createArtifactSchema = (options: LibraryContextBase) =>
 
 export async function deriveLibraryArtifact(
 	this: TransformPluginContext,
-	artifacts: Array<unknown>,
+	artifacts: v.InferOutput<typeof Artifacts>,
 	options: LibraryContextBase,
 ) {
 	const artifactSchema = createArtifactSchema(options);

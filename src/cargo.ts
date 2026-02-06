@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import * as v from "valibot";
 import type { PluginContext } from ".";
+import { Artifacts } from "./artifacts";
 import { MetadataSchema } from "./metadata";
 import type { MetadaSchemaOptions } from "./types";
 import { isString } from "./utils";
@@ -46,7 +47,7 @@ export function cargoMetadata(
 
 export async function cargoBuild(
 	options: MetadaSchemaOptions,
-	data: PluginContext,
+	context: PluginContext,
 ) {
 	// create `.wasm` from `.rs`
 	let args = [
@@ -56,16 +57,16 @@ export async function cargoBuild(
 		"--message-format=json",
 		"--color=never",
 		"--quiet",
-		data.isServe || "--release",
+		context.isServe || "--release",
 	].filter(isString);
 
-	data.log.debug({ args }, "cargo-build:raw-args");
+	context.log.debug({ args }, "cargo-build:raw-args");
 
-	if (data.cargoBuildOverrides) {
-		args = data.cargoBuildOverrides(args);
-		data.log.debug({ args }, "cargo-build:overridden-args");
+	if (context.cargoBuildOverrides) {
+		args = context.cargoBuildOverrides(args);
+		context.log.debug({ args }, "cargo-build:overridden-args");
 	} else {
-		data.log.debug("cargo-build:no-overriden-args");
+		context.log.debug("cargo-build:no-overriden-args");
 	}
 
 	const ndjson = execFileSync("cargo", args, {
@@ -74,15 +75,15 @@ export async function cargoBuild(
 		stdio: ["ignore", "pipe", "ignore"],
 	});
 
-	data.log.debug({ ndjson }, "artifacts-ndjson");
+	context.log.debug({ ndjson }, "artifacts-ndjson");
 
 	const json = ndjson
 		.trim()
 		.split("\n")
 		.map((json) => JSON.parse(json));
 
-	data.log.debug({ json }, "artifacts");
+	context.log.debug({ json }, "artifacts");
 
 	// todo: validate json data
-	return json;
+	return v.parse(Artifacts, json);
 }
