@@ -1,3 +1,5 @@
+import * as path from "node:path";
+
 export function isString(value: unknown): value is string {
 	return typeof value === "string";
 }
@@ -23,8 +25,7 @@ export function findOnlyOne<T, U extends T>(
 	return found;
 }
 
-import * as path from "node:path";
-import { CACHE_DIR } from "./constants";
+export const CACHE_DIR = "node_modules/.cache/vitest-plugin-cargo";
 
 export function createLibraryDir(hash: string) {
 	if (hash.length <= 2) {
