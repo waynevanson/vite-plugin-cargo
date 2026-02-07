@@ -52,6 +52,34 @@ export type CargoBuildOverrides = v.InferOutput<
 	typeof CargoBuildOverridesSchema
 >;
 
+const CargoBuildProfile = v.optional(
+	v.pipe(
+		v.union([
+			v.pipe(
+				v.string(),
+				v.transform(
+					(profile) => (_context: { production: boolean }) => profile,
+				),
+			),
+			v.pipe(
+				v.function(),
+				v.args(
+					v.strictTuple([
+						v.object({
+							production: v.boolean(),
+						}),
+					]),
+				),
+				v.returns(v.string()),
+			),
+		]),
+	),
+	(context: { production: boolean }) =>
+		context.production ? "release" : "dev",
+);
+
+export type CargoBuildProfile = v.InferInput<typeof CargoBuildProfile>;
+
 const VitePluginCargoOptionsBaseSchema = v.pipe(
 	v.object({
 		pattern: StringFilterSchema,
@@ -59,7 +87,7 @@ const VitePluginCargoOptionsBaseSchema = v.pipe(
 		noTypescript: enable,
 		browserOnly: enable,
 		cargoBuildOverrides: CargoBuildOverridesSchema,
-		cargoBuildProfile: v.optional(v.string()),
+		cargoBuildProfile: CargoBuildProfile,
 		cargoBuildTarget: v.optional(v.string(), "wasm32-unknown-unknown"),
 	}),
 	v.transform((base) => ({

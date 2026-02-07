@@ -32,13 +32,13 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 	const log = pino({ level: context.logLevel });
 
-	let isServe = false;
+	let production = false;
 	const libraries = new HashSet<LibraryHashable>();
 
 	return {
 		name: "vite-plugin-cargo",
 		configResolved(config) {
-			isServe = config.command === "serve";
+			production = config.command === "build";
 		},
 		watchChange: {
 			handler(id, change) {
@@ -67,8 +67,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			},
 			async handler(_code, libraryFilePath) {
 				// todo: as user config
-				const cargoBuildProfile =
-					context.cargoBuildProfile ?? (isServe ? "release" : "dev");
+				const cargoBuildProfile = context.cargoBuildProfile({ production });
 
 				const projectFilePath = findProjectFilePath(libraryFilePath, log);
 
