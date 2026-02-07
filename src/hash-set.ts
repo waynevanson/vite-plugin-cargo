@@ -19,6 +19,16 @@ export class HashSet<Value> implements Iterable<Value> {
 		return this.#hasher.hash(value);
 	}
 
+	findHashFromValue(predicate: (value: Value) => boolean): string | undefined {
+		for (const [hash, value] of this.#map.entries()) {
+			if (predicate(value)) {
+				return hash;
+			}
+		}
+
+		return undefined;
+	}
+
 	has(value: Value) {
 		return this.#map.has(this.hash(value));
 	}

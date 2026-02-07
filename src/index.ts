@@ -52,14 +52,15 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 			handler(id, change) {
 				// todo: instead of watching just dependencies,
 				// we need to watch all files and trigger rebuild when the dependencies change.
+				// todo: how to find watch files related to the project like build script .rs?
 			},
 		},
 		async resolveId(source, importer) {
 			// todo: wasm-bindgen could create many files which won't use the entrypoint. check if importer is in the outDir
 			// check if this import came from one of our entrypoints
-			const hash = libraries
-				.entries()
-				.find(([_hash, library]) => library.libraryFilePath === importer)?.[0];
+			const hash = libraries.findHashFromValue(
+				(library) => library.libraryFilePath === importer,
+			);
 
 			if (hash === undefined) {
 				return null;
@@ -123,8 +124,6 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 					},
 				);
 
-				log.debug({ libraryFileDependencies }, "watching-dependencies");
-
 				// Watch for files only
 				for (const libraryDependencies of libraryFileDependencies) {
 					this.addWatchFile(libraryDependencies);
@@ -140,12 +139,6 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				});
 
 				const wasmBindgenOutDir = createLibraryDir(hash);
-
-				log.debug({
-					hash,
-					libraryFilePath,
-					wasmBindgenOutDir,
-				});
 
 				buildWasmBindgen({
 					browserless,
