@@ -1,3 +1,4 @@
+import type { LevelWithSilent } from "pino";
 import type { StringFilter } from "rollup";
 import * as v from "valibot";
 
@@ -52,33 +53,24 @@ export type CargoBuildOverrides = v.InferOutput<
 	typeof CargoBuildOverridesSchema
 >;
 
+const CargoBuildProfileFn = v.pipe(
+	v.function(),
+	v.args(v.strictTuple([v.object({ production: v.boolean() })])),
+	v.returns(v.string()),
+);
+
 const CargoBuildProfile = v.optional(
 	v.pipe(
 		v.union([
 			v.pipe(
 				v.string(),
-				v.transform(
-					(profile) => (_context: { production: boolean }) => profile,
-				),
+				v.transform((profile) => (_: { production: boolean }) => profile),
 			),
-			v.pipe(
-				v.function(),
-				v.args(
-					v.strictTuple([
-						v.object({
-							production: v.boolean(),
-						}),
-					]),
-				),
-				v.returns(v.string()),
-			),
+			CargoBuildProfileFn,
 		]),
 	),
-	(context: { production: boolean }) =>
-		context.production ? "release" : "dev",
+	(args_0: { production: boolean }) => (args_0.production ? "release" : "dev"),
 );
-
-export type CargoBuildProfile = v.InferInput<typeof CargoBuildProfile>;
 
 const VitePluginCargoOptionsBaseSchema = v.pipe(
 	v.object({
@@ -108,9 +100,84 @@ const VitePluginCargoOptionsSchema = v.intersect([
 
 export const parsePluginOptions = v.parser(VitePluginCargoOptionsSchema);
 
-export type VitePluginCargoOptions = v.InferInput<
-	typeof VitePluginCargoOptionsSchema
->;
+// todo: handcraft these types
+export type VitePluginCargoOptions = {
+	/**
+	 * @summary
+	 * Pattern of files that could be used as entrypoints.
+	 * Needs to start with `**` so that it matches full paths.
+	 *
+	 * @example
+	 * `**\/*.rs`
+	 */
+	pattern: StringFilter;
+
+	/**
+	 * @summary
+	 * Log level for debugging this plugin
+	 * @default "silent"
+	 */
+	logLevel?: LevelWithSilent;
+
+	/**
+	 * @summary
+	 * Disable emitting typescript declaration (`.dts`) files in all contexts.
+	 * @default false
+	 */
+	noTypescript?: boolean;
+
+	/**
+	 * @summary
+	 * Hints to `wasm-bindgen` that compatible is narrowed to browsers,
+	 * and not other environments like Node.js.
+	 * @default false
+	 */
+	browserOnly?: boolean;
+
+	/**
+	 * @summary
+	 * An escape hatch to override the arguments for `cargo build`.
+	 * Useful for adding nightly flags.
+	 * @default (args) => args
+	 * @example
+	 * (args) => args.concat("Zsome-nightly-flag=true")
+	 */
+	cargoBuildOverrides?: (args: Array<string>) => Array<string>;
+
+	/**
+	 * @summary
+	 * Build profile provided to cargo build.
+	 * @default (context) => context.production ? "release" : "dev"
+	 * @example (context) => context.production ? "release" : "test"
+	 */
+	cargoBuildProfile?: string | ((context: { production: boolean }) => string);
+} & (
+	| {
+			/**
+			 * @summary
+			 * Enable all features of this library
+			 * @default false
+			 */
+			allFeatures: true;
+	  }
+	| {
+			/**
+			 * @summary
+			 * Disable all default features
+			 * @default false
+			 */
+			noDefaultFeatures?: boolean;
+
+			/**
+			 * @summary
+			 * Enable any features at build time.
+			 * @default []
+			 * @example
+			 * ["serde1"]
+			 */
+			features?: Array<string>;
+	  }
+);
 
 export type VitePluginCargoOptionsInternal = v.InferOutput<
 	typeof VitePluginCargoOptionsSchema

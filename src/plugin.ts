@@ -45,6 +45,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				// todo: instead of watching just dependencies,
 				// we need to watch all files and trigger rebuild when the dependencies change.
 				// todo: how to find watch files related to the project like build script .rs?
+				// build.rs is technically the src_path
 			},
 		},
 		async resolveId(source, importer) {
@@ -70,7 +71,6 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				const cargoBuildProfile = context.cargoBuildProfile({ production });
 
 				const projectFilePath = findProjectFilePath(libraryFilePath, log);
-
 				const projectMetadata = findProjectMetadata(projectFilePath, log);
 
 				// find the right library from our file
