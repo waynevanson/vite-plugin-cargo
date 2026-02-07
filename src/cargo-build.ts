@@ -7,8 +7,6 @@ export function cargoBuild(context: {
 	cargoBuildOverrides: CargoBuildOverrides;
 	projectFilePath: string;
 	log: pino.Logger;
-	isServe: boolean;
-	profile: undefined | string;
 	cargoBuildTarget: string;
 	cargoBuildProfile: string;
 }) {
@@ -20,7 +18,7 @@ export function cargoBuild(context: {
 		"--message-format=json",
 		`--manifest-path=${context.projectFilePath}`,
 		"--quiet",
-		`--profile=${context.profile}`,
+		`--profile=${context.cargoBuildProfile}`,
 	].filter(isString);
 
 	context.log.debug({ args }, "cargo-build:raw-args");

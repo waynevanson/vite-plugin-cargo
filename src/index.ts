@@ -7,16 +7,15 @@ import { cargoBuild } from "./cargo-build";
 import { findLibraryDependencies } from "./find-library-dependencies";
 import { findProjectFilePath } from "./find-project-file-path";
 import { HashSet } from "./hash-set";
-import { createLibraryDir } from "./library";
 import { findLibraryMetadata, findProjectMetadata } from "./metadata";
 import {
 	parsePluginOptions,
 	type VitePluginCargoOptions,
 	type VitePluginCargoOptionsInternal,
 } from "./plugin-options";
-import { isString } from "./utils";
+import { createLibraryDir, isString } from "./utils";
 
-export interface Library {
+export interface LibraryHashable {
 	projectFilePath: string;
 	libraryFilePath: string;
 	cargoBuildTarget: string;
@@ -26,37 +25,28 @@ export interface Library {
 export interface PluginContext
 	extends Omit<VitePluginCargoOptionsInternal, "logLevel"> {
 	isServe: boolean;
-	libraries: HashSet<Library>;
+	libraries: HashSet<LibraryHashable>;
 	log: pino.Logger;
 }
 
-function createPluginContext(
-	pluginOptions: VitePluginCargoOptions,
-): PluginContext {
-	const options = parsePluginOptions(pluginOptions);
-
-	const log = pino({ level: options.logLevel });
-
-	//@ts-expect-error
-	delete options.logLevel;
-
-	const data = {
-		...options,
-		libraries: new HashSet<Library>(),
-		log,
-		isServe: false,
-	};
-
-	return data;
-}
-
 export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
-	const pluginContext = createPluginContext(pluginOptions_);
+	const {
+		browserless,
+		typescript,
+		cargoBuildTarget,
+		cargoBuildOverrides,
+		...context
+	} = parsePluginOptions(pluginOptions_);
+
+	const log = pino({ level: context.logLevel });
+
+	let isServe = false;
+	const libraries = new HashSet<LibraryHashable>();
 
 	return {
 		name: "vite-plugin-cargo",
 		configResolved(config) {
-			pluginContext.isServe = config.command === "serve";
+			isServe = config.command === "serve";
 		},
 		watchChange: {
 			handler(id, change) {
@@ -67,7 +57,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 		async resolveId(source, importer) {
 			// todo: wasm-bindgen could create many files which won't use the entrypoint. check if importer is in the outDir
 			// check if this import came from one of our entrypoints
-			const hash = pluginContext.libraries
+			const hash = libraries
 				.entries()
 				.find(([_hash, library]) => library.libraryFilePath === importer)?.[0];
 
@@ -80,35 +70,27 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 		},
 		transform: {
 			filter: {
-				id: pluginContext.pattern,
+				id: context.pattern,
 			},
 			async handler(_code, libraryFilePath) {
-				const projectFilePath = findProjectFilePath(
-					libraryFilePath,
-					pluginContext.log,
-				);
+				// todo: as user config
+				const cargoBuildProfile =
+					context.cargoBuildProfile ?? (isServe ? "release" : "dev");
 
-				const projectMetadata = findProjectMetadata(
-					projectFilePath,
-					pluginContext.log,
-				);
+				const projectFilePath = findProjectFilePath(libraryFilePath, log);
+
+				const projectMetadata = findProjectMetadata(projectFilePath, log);
 
 				// find the right library from our file
 				// todo: don't use cargo build to find where deps should be
 				// metadata should have enough in
-				const libraryMetadata = findLibraryMetadata(projectMetadata, {
+				const libraryMetadata = findLibraryMetadata({
+					projectMetadata,
 					libraryFilePath,
 					projectFilePath,
 				});
 
-				// todo: as user config
-				const cargoBuildTarget = "wasm32-unknown-unknown";
-				const cargoBuildProfile =
-					pluginContext.cargoBuildProfile ??
-					(pluginContext.isServe ? "release" : "dev");
-
 				const cargoBuildTargetDir = projectMetadata.target_directory;
-				// todo: hold paths here
 				const libraryTargetName = libraryMetadata.target.name;
 
 				const libraryBuildDir = path.resolve(
@@ -119,13 +101,11 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 				// get workspace target dir from metadata
 				cargoBuild({
+					log,
 					cargoBuildTarget,
-					cargoBuildOverrides: pluginContext.cargoBuildOverrides,
+					cargoBuildOverrides,
 					cargoBuildProfile,
-					isServe: pluginContext.isServe,
-					log: pluginContext.log,
 					projectFilePath,
-					profile: pluginContext.cargoBuildProfile,
 				});
 
 				const wasmFilePath: string = path.resolve(
@@ -138,22 +118,12 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 				const libraryFileDependencies = await findLibraryDependencies.call(
 					this,
 					{
-						cargoBuildTarget,
-						cargoBuildProfile,
-						libraryMetadata,
-						libraryFilePath,
-						projectFilePath,
-						cargoBuildTargetDir,
 						libraryDepsDir,
 						libraryTargetName,
-						wasmFilePath,
 					},
 				);
 
-				pluginContext.log.debug(
-					{ libraryFileDependencies },
-					"watching-dependencies",
-				);
+				log.debug({ libraryFileDependencies }, "watching-dependencies");
 
 				// Watch for files only
 				for (const libraryDependencies of libraryFileDependencies) {
@@ -162,7 +132,7 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 				// keep track of libraries compiled
 				// for resolving `wasm-bingen` files to `outDir`.
-				const hash = pluginContext.libraries.add({
+				const hash = libraries.add({
 					projectFilePath,
 					libraryFilePath,
 					cargoBuildTarget,
@@ -171,22 +141,22 @@ export function cargo(pluginOptions_: VitePluginCargoOptions): Plugin<never> {
 
 				const wasmBindgenOutDir = createLibraryDir(hash);
 
-				pluginContext.log.debug({
+				log.debug({
 					hash,
 					libraryFilePath,
-					outDir: wasmBindgenOutDir,
+					wasmBindgenOutDir,
 				});
 
 				buildWasmBindgen({
-					browserless: pluginContext.browserless,
-					log: pluginContext.log,
-					typescript: pluginContext.typescript,
+					browserless,
+					log,
+					typescript,
 					wasmBindgenOutDir,
 					wasmFilePath,
 				});
 
 				// copy <name>.d.ts to the <id>.d.ts so user gets type definitions for their rust file.
-				if (pluginContext.typescript) {
+				if (typescript) {
 					await copyTypescriptDeclaration.call(this, {
 						wasmBindgenOutDir,
 						libraryTargetName,
@@ -214,6 +184,7 @@ async function readJavascriptEntryPoint(
 		library.wasmBindgenOutDir,
 		`${library.libraryTargetName}.js`,
 	);
+
 	const content = await this.fs.readFile(entrypoint, {
 		encoding: "utf8",
 	});

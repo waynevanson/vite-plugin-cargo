@@ -1,21 +1,13 @@
 import path from "node:path";
 import type { TransformPluginContext } from "rollup";
-import type { findLibraryMetadata } from "./metadata";
 
 // todo: instead of watching just dependencies,
 // we need to watch all files and trigger rebuild when the dependencies change.
 export async function findLibraryDependencies(
 	this: TransformPluginContext,
 	options: {
-		libraryFilePath: string;
-		projectFilePath: string;
-		libraryMetadata: ReturnType<typeof findLibraryMetadata>;
-		cargoBuildTarget: string;
-		cargoBuildProfile: string;
-		cargoBuildTargetDir: string;
 		libraryDepsDir: string;
 		libraryTargetName: string;
-		wasmFilePath: string;
 	},
 ) {
 	const libraryDepsFilePath = path.resolve(

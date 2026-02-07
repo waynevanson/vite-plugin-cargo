@@ -1,7 +1,5 @@
 import { type Hasher, type HasherOptions, hasher } from "node-object-hash";
 
-// might not be what I need for my use case.
-// inside it needs to take the outdir?
 export class HashSet<Value> implements Iterable<Value> {
 	#hasher: Hasher;
 	#map: Map<string, Value>;

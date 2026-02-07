@@ -27,12 +27,13 @@ export function findProjectMetadata(projectFilename: string, log: pino.Logger) {
 }
 
 // todo: use the target found here to verify we have the correct target
-export function findLibraryMetadata(
-	metadata: v.InferOutput<typeof MetadataSchema>,
-	options: { libraryFilePath: string; projectFilePath: string },
-) {
+export function findLibraryMetadata(options: {
+	projectMetadata: v.InferOutput<typeof MetadataSchema>;
+	libraryFilePath: string;
+	projectFilePath: string;
+}) {
 	const package_ = findOnlyOne(
-		metadata.packages,
+		options.projectMetadata.packages,
 		(a) => a.manifest_path === options.projectFilePath,
 	);
 

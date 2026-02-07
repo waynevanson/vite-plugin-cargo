@@ -60,6 +60,7 @@ const VitePluginCargoOptionsBaseSchema = v.pipe(
 		browserOnly: enable,
 		cargoBuildOverrides: CargoBuildOverridesSchema,
 		cargoBuildProfile: v.optional(v.string()),
+		cargoBuildTarget: v.optional(v.string(), "wasm32-unknown-unknown"),
 	}),
 	v.transform((base) => ({
 		typescript: !base.noTypescript,
@@ -68,6 +69,7 @@ const VitePluginCargoOptionsBaseSchema = v.pipe(
 		cargoBuildOverrides: base.cargoBuildOverrides,
 		logLevel: base.logLevel,
 		cargoBuildProfile: base.cargoBuildProfile,
+		cargoBuildTarget: base.cargoBuildTarget,
 	})),
 );
 
